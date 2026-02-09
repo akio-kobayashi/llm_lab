@@ -47,6 +47,7 @@ def load_llm(model_id: str = DEFAULT_MODEL_ID, use_4bit: bool = True):
             trust_remote_code=True,
             quantization_config=bnb_config,
             device_map="auto",  # GPUに自動で割り当て
+            pad_token_id=0,     # StableLMのpad_token_idエラー回避
         )
         model.eval() # 評価モード
     except Exception as e:
