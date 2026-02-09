@@ -49,10 +49,19 @@ def train_lora(
     print(f"Loading training dataset from: {train_dataset_path}")
     train_dataset = load_dataset("json", data_files=train_dataset_path, split="train")
 
-    def formatting_prompts_func(example):
-        # input/outputカラム名はデータセットに合わせて適宜調整してください
-        # 例: {"input": "...", "output": "..."}
-        return [f"### 指示:\n{i}\n\n### 応答:\n{o}" for i, o in zip(example['input'], example['output'])]
+    # --- 修正箇所: ここで事前にデータを整形します ---
+    def formatting_prompts_func(examples):
+        # バッチ処理(batched=True)されるため、examples['input']はリストです
+        output_texts = []
+        for i, o in zip(examples['input'], examples['output']):
+            text = f"### 指示:\n{i}\n\n### 応答:\n{o}" + tokenizer.eos_token
+            output_texts.append(text)
+        return {"text": output_texts}
+
+    print("Formatting dataset...")
+    # SFTTrainerに任せず、明示的にマップ処理を行うことでエラーを防ぐ
+    train_dataset = train_dataset.map(formatting_prompts_func, batched=True)
+    # ----------------------------------------------
 
     # 基本的な学習設定
     common_args = {
@@ -65,30 +74,25 @@ def train_lora(
         "logging_steps": 10,
         "save_strategy": "no",
         "report_to": "none",
-        # max_seq_length はここでは渡さない
     }
 
-    # 設定オブジェクトを作成
     training_args = ConfigClass(**common_args)
     
     # SFTTrainerの初期化
+    # 修正: formatting_func は削除し、dataset_text_field を使用
     trainer = SFTTrainer(
         model=model,
         args=training_args,
         train_dataset=train_dataset,
-        formatting_func=formatting_prompts_func,
-        # ここを修正: tokenizer -> processing_class
-        processing_class=tokenizer,
-        # ここに追加: max_seq_length (SFTConfigを使用しない場合などに必要になることがある)
-        # ※ただし最新のtrl + SFTConfigの組み合わせの場合、Config側に含めるべき場合もありますが、
-        #  エラー回避のためSFTTrainerの引数として渡すのが現在の安全策です。
+        dataset_text_field="text",  # 事前に作ったカラムを指定
+        processing_class=tokenizer, # 新バージョン対応
+        max_seq_length=max_seq_length,
     )
 
     print("Starting LoRA training...")
     trainer.train()
     print("Training finished.")
 
-    # 学習済みアダプタの保存
     adapter_save_path = os.path.join(output_dir, "final_adapter")
     print(f"Saving LoRA adapter to: {adapter_save_path}")
     trainer.model.save_pretrained(adapter_save_path)
