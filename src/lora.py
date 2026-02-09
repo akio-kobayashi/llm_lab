@@ -51,7 +51,8 @@ def train_lora(
 
     def formatting_prompts_func(example):
         # input/outputカラム名はデータセットに合わせて適宜調整してください
-        return f"### 指示:\n{example['input']}\n\n### 応答:\n{example['output']}"
+        # 例: {"input": "...", "output": "..."}
+        return [f"### 指示:\n{i}\n\n### 応答:\n{o}" for i, o in zip(example['input'], example['output'])]
 
     # 基本的な学習設定
     common_args = {
@@ -64,11 +65,10 @@ def train_lora(
         "logging_steps": 10,
         "save_strategy": "no",
         "report_to": "none",
-        # ここから max_seq_length は削除します
+        # max_seq_length はここでは渡さない
     }
 
     # 設定オブジェクトを作成
-    # ConfigClassがSFTConfigであれTrainingArgumentsであれ、ここでmax_seq_lengthは渡さない
     training_args = ConfigClass(**common_args)
     
     # SFTTrainerの初期化
@@ -77,8 +77,11 @@ def train_lora(
         args=training_args,
         train_dataset=train_dataset,
         formatting_func=formatting_prompts_func,
-        tokenizer=tokenizer,
-        max_seq_length=max_seq_length,  # <--- ここに移動しました
+        # ここを修正: tokenizer -> processing_class
+        processing_class=tokenizer,
+        # ここに追加: max_seq_length (SFTConfigを使用しない場合などに必要になることがある)
+        # ※ただし最新のtrl + SFTConfigの組み合わせの場合、Config側に含めるべき場合もありますが、
+        #  エラー回避のためSFTTrainerの引数として渡すのが現在の安全策です。
     )
 
     print("Starting LoRA training...")
@@ -88,7 +91,7 @@ def train_lora(
     # 学習済みアダプタの保存
     adapter_save_path = os.path.join(output_dir, "final_adapter")
     print(f"Saving LoRA adapter to: {adapter_save_path}")
-    trainer.model.save_pretrained(adapter_save_path) # model.save_pretrained より trainer経由が安全な場合があります
+    trainer.model.save_pretrained(adapter_save_path)
     
     return trainer
 
