@@ -1,157 +1,96 @@
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, pipeline
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, pipeline, GenerationConfig
 
 # --- 編集可能: モデル設定 ---
-# line-corporation/japanese-large-lm-3.6b-instruction-sft
-# stabilityai/japanese-stablelm-3b-4e1t-instruct
-DEFAULT_MODEL_ID = "line-corporation/japanese-large-lm-3.6b-instruction-sft"
+# 楽天の1.5B軽量モデル。日本語能力が高く、非常に高速です。
+DEFAULT_MODEL_ID = "Rakuten/RakutenAI-2.0-mini-instruct"
 # --- 編集可能ここまで ---
 
 def load_llm(model_id: str = DEFAULT_MODEL_ID, use_4bit: bool = True):
-    """
-    指定されたモデルIDのLLMとTokenizerをロードする。
-    4bit量子化をデフォルトで有効にする。
-
-    Args:
-        model_id (str): ロードするHugging FaceモデルのID。
-        use_4bit (bool): 4bit量子化を使用するかどうか。
-
-    Returns:
-        tuple: (model, tokenizer)
-    """
     print(f"Loading model: {model_id}")
-    print(f"Using 4-bit quantization: {use_4bit}")
 
+    bnb_config = None
     if use_4bit:
-        # 4bit量子化の設定
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_use_double_quant=True,
             bnb_4bit_quant_type="nf4",
             bnb_4bit_compute_dtype=torch.bfloat16,
         )
-    else:
-        bnb_config = None
 
-    # Tokenizerのロード
-    try:
-        tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
-    except Exception as e:
-        print(f"Error loading tokenizer for {model_id}: {e}")
-        raise
+    # 楽天モデルは標準的なFastTokenizerで動作します
+    tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
 
-    # モデルのロード
-    try:
-        model = AutoModelForCausalLM.from_pretrained(
-            model_id,
-            trust_remote_code=True,
-            quantization_config=bnb_config,
-            device_map="auto",  # GPUに自動で割り当て
-        )
-        
-        # pad_tokenの設定 (エラー回避とバッチ処理のため)
-        # StableLMなどpad_token_idを持たないモデルへの対応として、tokenizer側のみ設定
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
-
-        model.eval() # 評価モード
-    except Exception as e:
-        print(f"Error loading model for {model_id}: {e}")
-        raise
-
+    model = AutoModelForCausalLM.from_pretrained(
+        model_id,
+        trust_remote_code=True,
+        quantization_config=bnb_config,
+        device_map="auto",
+    )
+    
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    
+    model.eval()
     print("Model and tokenizer loaded successfully.")
     return model, tokenizer
 
 def generate_text(
     model,
     tokenizer,
-    prompt: str,
+    user_input: str,
     max_new_tokens: int = 256,
     temperature: float = 0.7,
-    top_p: float = 0.9,
-    repetition_penalty: float = 1.05,
-    do_sample: bool = True,
 ):
     """
-    ロード済みのモデルとTokenizerを使ってテキストを生成する。
-
-    Args:
-        model: ロード済みモデル。
-        tokenizer: ロード済みTokenizer。
-        prompt (str): 生成の元となるプロンプト。
-        max_new_tokens (int): 生成する最大トークン数。
-        temperature (float): 生成の多様性を制御。
-        top_p (float): 上位pの確率を持つトークンからサンプリング。
-        repetition_penalty (float): 同じ単語の繰り返しを抑制。
-        do_sample (bool): サンプリングを使用するかどうか。
-
-    Returns:
-        str: 生成されたテキスト。
+    チャットテンプレートを使用して、モデルに最適な形式で生成します。
     """
-    # GenerationConfigを作成してパラメータを設定
-    from transformers import GenerationConfig
-    
-    generation_config = GenerationConfig(
+    # モデル固有のフォーマット（chat_template）を適用
+    # これにより「ユーザー：」などのタグを自分で書く必要がなくなります
+    messages = [{"role": "user", "content": user_input}]
+    prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+
+    gen_config = GenerationConfig(
         max_new_tokens=max_new_tokens,
         temperature=temperature,
-        top_p=top_p,
-        repetition_penalty=repetition_penalty,
-        do_sample=do_sample,
-        pad_token_id=tokenizer.pad_token_id if tokenizer.pad_token else tokenizer.eos_token_id,
-        num_return_sequences=num_return_sequences if 'num_return_sequences' in locals() else 1,
+        do_sample=True,
+        pad_token_id=tokenizer.pad_token_id,
+        eos_token_id=tokenizer.eos_token_id,
     )
 
-    # パイプラインの作成（torch_dtypeは非推奨のため削除）
-    text_generation_pipeline = pipeline(
+    text_gen = pipeline(
         "text-generation",
         model=model,
         tokenizer=tokenizer,
-        device_map="auto",
-        trust_remote_code=True,
     )
 
-    # テキスト生成の実行
     try:
-        generated = text_generation_pipeline(
+        results = text_gen(
             prompt,
-            # generation_configを経由でパラメータを渡すため、個別引数は不要
-            # ただし、num_return_sequencesだけ明示的に指定（pipelineの制約）
-            pad_token_id=tokenizer.eos_token_id,
-            num_return_sequences=1,
+            generation_config=gen_config,
+            return_full_text=False,
         )
-        
-        # パイプラインの出力はリストなので、最初の要素の生成テキストを返す
-        if generated and len(generated) > 0:
-            return generated[0]["generated_text"]
-        else:
-            return "Error: Text generation failed."
-
+        return results[0]["generated_text"]
     except Exception as e:
-        print(f"Error during text generation: {e}")
         return f"Error: {e}"
 
 if __name__ == '__main__':
-    # このファイルが直接実行された場合の動作テスト
-    print("--- Running common.py self-test ---")
-
-    # 4bitでロード
     try:
-        model, tokenizer = load_llm(use_4bit=True)
+        model, tokenizer = load_llm()
 
-        # テキスト生成
-        prompt = "日本で一番高い山はなんですか？"
-        print(f"\nPrompt: {prompt}")
+        # 質問をそのまま入力するだけ！
+        user_query = "日本で一番高い山は何ですか？また、二番目についても教えてください。"
+        
+        print(f"\n--- 質問 ---\n{user_query}")
 
-        generated_text = generate_text(model, tokenizer, prompt)
-        print("\nGenerated Text:")
-        print(generated_text)
+        generated_text = generate_text(model, tokenizer, user_query)
+        
+        print(f"\n--- 回答 ---\n{generated_text}")
 
-        # モデルとTokenizerを解放 (メモリ節約)
-        del model
-        del tokenizer
-        torch.cuda.empty_cache()
-        print("\n--- Self-test finished ---")
+        # メモリ解放
+        del model, tokenizer
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     except Exception as e:
-        print(f"\nSelf-test failed: {e}")
-        print("Please ensure you have enough GPU memory and required libraries are installed.")
+        print(f"Failed: {e}")
