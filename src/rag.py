@@ -18,7 +18,7 @@ class FaissRAGPipeline:
         コンストラクタ。Embeddingモデルをロードする。
         """
         print(f"Loading embedding model: {embedding_model_id}")
-        self.embedding_model = SentenceTransformer(embedding_model_id)
+        self.embedding_model = SentenceTransformer(embedding_model_id, trust_remote_code=True)
         self.index = None
         self.documents = []
         print("Embedding model loaded.")

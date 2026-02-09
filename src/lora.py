@@ -132,7 +132,7 @@ def load_lora_adapter(model, adapter_path: str):
         
     print(f"Loading LoRA adapter from: {adapter_path}")
     # PEFTモデルとしてアダプタをロード
-    model = PeftModel.from_pretrained(model, adapter_path)
+    model = PeftModel.from_pretrained(model, adapter_path, trust_remote_code=True)
     
     # 必要に応じてマージ
     # model = model.merge_and_unload()

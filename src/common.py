@@ -89,6 +89,7 @@ def generate_text(
         tokenizer=tokenizer,
         torch_dtype=torch.bfloat16,
         device_map="auto",
+        trust_remote_code=True,
     )
 
     # テキスト生成の実行
