@@ -88,12 +88,24 @@ def generate_text(
     Returns:
         str: 生成されたテキスト。
     """
-    # パイプラインの作成
+    # GenerationConfigを作成してパラメータを設定
+    from transformers import GenerationConfig
+    
+    generation_config = GenerationConfig(
+        max_new_tokens=max_new_tokens,
+        temperature=temperature,
+        top_p=top_p,
+        repetition_penalty=repetition_penalty,
+        do_sample=do_sample,
+        pad_token_id=tokenizer.pad_token_id if tokenizer.pad_token else tokenizer.eos_token_id,
+        num_return_sequences=num_return_sequences if 'num_return_sequences' in locals() else 1,
+    )
+
+    # パイプラインの作成（torch_dtypeは非推奨のため削除）
     text_generation_pipeline = pipeline(
         "text-generation",
         model=model,
         tokenizer=tokenizer,
-        torch_dtype=torch.bfloat16,
         device_map="auto",
         trust_remote_code=True,
     )
@@ -102,14 +114,12 @@ def generate_text(
     try:
         generated = text_generation_pipeline(
             prompt,
-            max_new_tokens=max_new_tokens,
-            temperature=temperature,
-            top_p=top_p,
-            repetition_penalty=repetition_penalty,
-            do_sample=do_sample,
+            # generation_configを経由でパラメータを渡すため、個別引数は不要
+            # ただし、num_return_sequencesだけ明示的に指定（pipelineの制約）
             pad_token_id=tokenizer.eos_token_id,
             num_return_sequences=1,
         )
+        
         # パイプラインの出力はリストなので、最初の要素の生成テキストを返す
         if generated and len(generated) > 0:
             return generated[0]["generated_text"]
