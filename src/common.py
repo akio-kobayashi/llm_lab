@@ -54,7 +54,15 @@ def load_llm(model_id: str = DEFAULT_MODEL_ID, use_4bit: bool = True):
             tokenizer.pad_token = tokenizer.eos_token
         # モデルconfigにpad_token_idを設定（StableLMの互換性対応）
         setattr(model.config, "pad_token_id", tokenizer.pad_token_id)
-        
+        # モデルconfigにpad_token_idを設定（StableLMの互換性対応）
+        # ただし、既に設定されている場合は上書きしない
+        try:
+            if not hasattr(model.config, "pad_token_id") or model.config.pad_token_id is None:
+                setattr(model.config, "pad_token_id", tokenizer.pad_token_id)
+        except Exception as e:
+            print(f"Warning: Could not set pad_token_id in model config (this may be normal for some models): {e}")
+
+
         model.eval() # 評価モード
     except Exception as e:
         print(f"Error loading model for {model_id}: {e}")
@@ -146,4 +154,3 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"\nSelf-test failed: {e}")
         print("Please ensure you have enough GPU memory and required libraries are installed.")
-
