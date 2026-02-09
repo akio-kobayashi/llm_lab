@@ -3,7 +3,7 @@ import torch
 from datasets import load_dataset
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from transformers import TrainingArguments
-from trl import SFTTrainer
+from trl import SFTTrainer, SFTConfig
 
 def create_lora_model(model, lora_rank=8, lora_alpha=16, lora_dropout=0.05):
     """
@@ -72,14 +72,10 @@ def train_lora(
 
     # プロンプト形式に整形する関数
     def formatting_prompts_func(example):
-        output_texts = []
-        for i in range(len(example['input'])):
-            text = f"### 指示:\n{example['input'][i]}\n\n### 応答:\n{example['output'][i]}"
-            output_texts.append(text)
-        return output_texts
+        return f"### 指示:\n{example['input']}\n\n### 応答:\n{example['output']}"
 
-    # トレーニング引数の設定
-    training_args = TrainingArguments(
+    # SFTConfigの設定 (trl 0.8.0以降の推奨)
+    training_args = SFTConfig(
         output_dir=output_dir,
         per_device_train_batch_size=per_device_train_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
@@ -89,14 +85,15 @@ def train_lora(
         logging_steps=10,
         save_strategy="no", # 小規模演習のため保存は最後のみ
         report_to="none", # wandbなどを使わない場合はnone
+        max_seq_length=max_seq_length, # max_seq_lengthはSFTConfigで指定
     )
 
     # SFTTrainerの初期化
     trainer = SFTTrainer(
         model=model,
+        tokenizer=tokenizer,
         train_dataset=train_dataset,
         formatting_func=formatting_prompts_func,
-        max_seq_length=max_seq_length,
         args=training_args,
     )
 
