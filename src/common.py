@@ -62,8 +62,8 @@ def generate_text(
     prompt: str,
     max_new_tokens: int = 256,
     temperature: float = 0.7,
-    top_p: float = 0.95,
-    top_k: int = 50,
+    top_p: float = 0.9,
+    repetition_penalty: float = 1.05,
     do_sample: bool = True,
 ):
     """
@@ -76,7 +76,7 @@ def generate_text(
         max_new_tokens (int): 生成する最大トークン数。
         temperature (float): 生成の多様性を制御。
         top_p (float): 上位pの確率を持つトークンからサンプリング。
-        top_k (int): 上位kのトークンからサンプリング。
+        repetition_penalty (float): 同じ単語の繰り返しを抑制。
         do_sample (bool): サンプリングを使用するかどうか。
 
     Returns:
@@ -98,7 +98,7 @@ def generate_text(
             max_new_tokens=max_new_tokens,
             temperature=temperature,
             top_p=top_p,
-            top_k=top_k,
+            repetition_penalty=repetition_penalty,
             do_sample=do_sample,
             pad_token_id=tokenizer.eos_token_id,
             num_return_sequences=1,

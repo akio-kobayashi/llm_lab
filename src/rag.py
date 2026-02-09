@@ -51,8 +51,11 @@ class FaissRAGPipeline:
             convert_to_numpy=True
         )
         
+        # L2正規化 (内積でコサイン類似度を計算するため)
+        faiss.normalize_L2(embeddings)
+        
         d = embeddings.shape[1]  # ベクトルの次元
-        self.index = faiss.IndexFlatL2(d)
+        self.index = faiss.IndexFlatIP(d)
         self.index.add(embeddings)
         
         print(f"Index built successfully. Total documents: {self.index.ntotal}")
@@ -113,6 +116,10 @@ class FaissRAGPipeline:
         
         print(f"Searching for: '{query}' (top_k={top_k})")
         query_embedding = self.embedding_model.encode([query], convert_to_numpy=True)
+        
+        # L2正規化
+        faiss.normalize_L2(query_embedding)
+        
         distances, indices = self.index.search(query_embedding, top_k)
         
         results = []

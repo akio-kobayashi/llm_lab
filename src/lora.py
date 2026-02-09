@@ -28,8 +28,7 @@ def create_lora_model(model, lora_rank=8, lora_alpha=16, lora_dropout=0.05):
         lora_dropout=lora_dropout,
         bias="none",
         task_type="CAUSAL_LM",
-        # ターゲットモジュールはモデルによって異なる可能性がある
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        target_modules=["q_proj", "v_proj"],
     )
 
     # PEFTモデルの作成
@@ -45,9 +44,9 @@ def train_lora(
     tokenizer,
     train_dataset_path: str,
     output_dir: str = "./lora_adapter",
-    per_device_train_batch_size: int = 2,
-    gradient_accumulation_steps: int = 4,
-    num_train_epochs: int = 3,
+    per_device_train_batch_size: int = 1,
+    gradient_accumulation_steps: int = 8,
+    max_steps: int = 100,
     learning_rate: float = 2e-4,
     max_seq_length: int = 512,
 ):
@@ -84,11 +83,11 @@ def train_lora(
         output_dir=output_dir,
         per_device_train_batch_size=per_device_train_batch_size,
         gradient_accumulation_steps=gradient_accumulation_steps,
-        num_train_epochs=num_train_epochs,
+        max_steps=max_steps,
         learning_rate=learning_rate,
         fp16=True, # 量子化モデルではfp16=Trueが推奨される
         logging_steps=10,
-        save_strategy="epoch",
+        save_strategy="no", # 小規模演習のため保存は最後のみ
         report_to="none", # wandbなどを使わない場合はnone
     )
 
