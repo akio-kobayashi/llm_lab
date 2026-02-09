@@ -50,18 +50,9 @@ def load_llm(model_id: str = DEFAULT_MODEL_ID, use_4bit: bool = True):
         )
         
         # pad_tokenの設定 (エラー回避とバッチ処理のため)
+        # StableLMなどpad_token_idを持たないモデルへの対応として、tokenizer側のみ設定
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
-        # モデルconfigにpad_token_idを設定（StableLMの互換性対応）
-        setattr(model.config, "pad_token_id", tokenizer.pad_token_id)
-        # モデルconfigにpad_token_idを設定（StableLMの互換性対応）
-        # ただし、既に設定されている場合は上書きしない
-        try:
-            if not hasattr(model.config, "pad_token_id") or model.config.pad_token_id is None:
-                setattr(model.config, "pad_token_id", tokenizer.pad_token_id)
-        except Exception as e:
-            print(f"Warning: Could not set pad_token_id in model config (this may be normal for some models): {e}")
-
 
         model.eval() # 評価モード
     except Exception as e:
