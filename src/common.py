@@ -2,9 +2,9 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, pipeline
 
 # --- 編集可能: モデル設定 ---
-# stabilityai/japanese-stablelm-3b-4e1t-instruct
 # line-corporation/japanese-large-lm-3.6b-instruction-sft
-DEFAULT_MODEL_ID = "stabilityai/japanese-stablelm-3b-4e1t-instruct"
+# stabilityai/japanese-stablelm-3b-4e1t-instruct
+DEFAULT_MODEL_ID = "line-corporation/japanese-large-lm-3.6b-instruction-sft"
 # --- 編集可能ここまで ---
 
 def load_llm(model_id: str = DEFAULT_MODEL_ID, use_4bit: bool = True):
@@ -47,8 +47,13 @@ def load_llm(model_id: str = DEFAULT_MODEL_ID, use_4bit: bool = True):
             trust_remote_code=True,
             quantization_config=bnb_config,
             device_map="auto",  # GPUに自動で割り当て
-            pad_token_id=0,     # StableLMのpad_token_idエラー回避
         )
+        
+        # pad_tokenの設定 (エラー回避とバッチ処理のため)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+        model.config.pad_token_id = tokenizer.pad_token_id
+        
         model.eval() # 評価モード
     except Exception as e:
         print(f"Error loading model for {model_id}: {e}")
