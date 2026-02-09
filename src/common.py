@@ -35,7 +35,7 @@ def load_llm(model_id: str = DEFAULT_MODEL_ID, use_4bit: bool = True):
 
     # Tokenizerのロード
     try:
-        tokenizer = AutoTokenizer.from_pretrained(model_id)
+        tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
     except Exception as e:
         print(f"Error loading tokenizer for {model_id}: {e}")
         raise
