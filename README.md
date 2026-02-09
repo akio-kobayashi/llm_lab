@@ -4,47 +4,37 @@
 
 ## 演習の構成
 
-各ノートブックは、特定のテーマに沿った演習となっています。`notebooks/` ディレクトリにあるファイルを、番号順に実行してください。
+各ノートブックは、特定のテーマに沿った演習となっています。以下の手順に従って進めてください。
 
-- **00_setup_common.ipynb**:
-  - 演習全体で利用するライブラリのインストールや、共通関数のセットアップを行います。**最初に必ず実行してください。**
+### 【重要】演習の始め方
 
-- **01_gpt_baseline.ipynb**:
-  - LLMをそのまま使った場合の基本的なテキスト生成を体験します。同じ質問でも回答が揺らぐことや、事実に基づかない回答（ハルシネーション）を観察します。
+1. 下記の表にある **「Colabで開く」** ボタンをクリックします。
+2. Google Colabが開いたら、まずメニューバーの **「ファイル」→「ドライブにコピーを保存」** をクリックしてください。
+3. 新しいタブで「コピー」が開きます。**必ずそのコピーされたノートブックを使って**演習を進めてください。
+   （元のノートブックのままでは、編集内容を保存できません）
 
-- **02_prompting.ipynb**:
-  - プロンプトエンジニアリングの初歩を学びます。指示の与え方によって、LLMの振る舞いや出力形式を制御できることを確認します。
+### ノートブック一覧
 
-- **03_rag_concept_demo.ipynb**:
-  - RAG（Retrieval-Augmented Generation）の概念を学びます。外部知識（ドキュメント）を検索し、その内容に基づいて回答を生成する仕組みを体験します。
+| 回 | ノートブック | テーマ | Colabで開く |
+| :--- | :--- | :--- | :--- |
+| **00** | `00_setup_common.ipynb` | **共通セットアップ** (最初に必ず実行) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/00_setup_common.ipynb) |
+| **01** | `01_gpt_baseline.ipynb` | LLM単体での生成体験 (ハルシネーションの観察) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/01_gpt_baseline.ipynb) |
+| **02** | `02_prompting.ipynb` | プロンプトエンジニアリング基礎 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/02_prompting.ipynb) |
+| **03** | `03_rag_concept_demo.ipynb` | RAGの概念デモ (手動RAG) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/03_rag_concept_demo.ipynb) |
+| **04** | `04_rag_faiss_exercise.ipynb` | Faissを使った本格的なRAG実装 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/04_rag_faiss_exercise.ipynb) |
+| **05** | `05_lora_concept_demo.ipynb` | LoRAファインチューニングの概念デモ | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/05_lora_concept_demo.ipynb) |
+| **06** | `06_lora_qlora_exercise.ipynb` | QLoRAによる学習実践 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/06_lora_qlora_exercise.ipynb) |
+| **07** | `07_integrate_gradio.ipynb` | 統合演習 (RAG + LoRA + Gradio UI) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/07_integrate_gradio.ipynb) |
 
-- **04_rag_faiss_exercise.ipynb**:
-  - FAISSライブラリを使って、より本格的なRAGシステムを構築します。質問を変えながら、検索されるドキュメントがどう変わるかを観察します。
+## 実行手順の詳細
 
-- **05_lora_concept_demo.ipynb**:
-  - LoRA（Low-Rank Adaptation）によるファインチューニングの効果を体験します。学習済みのアダプタを読み込み、特定の出力形式を遵守するようになったモデルの振る舞いを確認します。
+1. **`00_setup_common.ipynb` の実行**:
+   - 最初に必ず `00_setup_common.ipynb` を実行し、ライブラリのインストールを行ってください。
+   - インストール完了後、**「ランタイムを再起動」** する必要があります（ノートブック内の指示に従ってください）。
 
-- **06_lora_qlora_exercise.ipynb**:
-  - QLoRA（Quantized LoRA）を使って、実際にモデルのファインチューニングを行います。少量のデータで短時間の学習を行い、学習前後でモデルの性能がどう変化するかを比較します。
-
-- **07_integrate_gradio.ipynb**:
-  - これまでの演習で作成したRAGとLoRAの機能を統合し、Gradioを使ってインタラクティブなWeb UIを作成します。
-
-## 実行手順
-
-1. **Google Colabでノートブックを開く**:
-   - 各 `.ipynb` ファイルをGoogle Colabで開きます。GitHubリポジトリのURLをColabの「GitHub」タブに貼り付けるのが便利です。
-   - 例: `https://colab.research.google.com/github/[YourUsername]/[YourRepoName]/blob/main/notebooks/00_setup_common.ipynb`
-
-2. **リポジトリのクローン**:
-   - 各ノートブックの冒頭には、本リポジトリをColab環境にクローンするセルがあります。まずそれを実行してください。
-   - `!git clone https://github.com/your-account/llm_lab.git`
-
-3. **セットアップの実行**:
-   - `00_setup_common.ipynb` を開き、上から順にセルを実行します。これにより、必要なライブラリがインストールされ、以降の演習の準備が整います。
-
-4. **各演習の実行**:
-   - `01` から `07` までのノートブックを順に実行します。各ノートブック内の説明を読み、指示に従ってセルを実行・編集してください。
+2. **各演習の実行**:
+   - `01` から順に進めてください。
+   - 各ノートブックの冒頭で自動的にリポジトリのクローンが行われ、必要なプログラムが読み込まれます。
 
 ## 推奨環境
 
