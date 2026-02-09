@@ -6,15 +6,17 @@ from transformers import TrainingArguments
 import trl
 from trl import SFTTrainer
 
-# trlのバージョン判定
-HAS_SFT_CONFIG = hasattr(trl, "SFTConfig")
-if HAS_SFT_CONFIG:
+# trlのバージョンに応じて、SFTConfigかTrainingArgumentsのどちらを使用するか決定
+if hasattr(trl, "SFTConfig"):
     from trl import SFTConfig
+    ConfigClass = SFTConfig
 else:
-    # 古いバージョンの場合はTrainingArgumentsをSFTConfigとして扱う
-    SFTConfig = TrainingArguments
+    ConfigClass = TrainingArguments
 
 def create_lora_model(model, lora_rank=8, lora_alpha=16, lora_dropout=0.05):
+    """
+    ベースモデルにLoRAアダプタを追加して、学習可能なPEFTモデルを返す。
+    """
     model = prepare_model_for_kbit_training(model)
     lora_config = LoraConfig(
         r=lora_rank,
@@ -40,6 +42,9 @@ def train_lora(
     learning_rate: float = 2e-4,
     max_seq_length: int = 512,
 ):
+    """
+    QLoRAの学習を実行する。
+    """
     tokenizer.pad_token = tokenizer.eos_token
     print(f"Loading training dataset from: {train_dataset_path}")
     train_dataset = load_dataset("json", data_files=train_dataset_path, split="train")
@@ -47,62 +52,55 @@ def train_lora(
     def formatting_prompts_func(example):
         return f"### 指示:\n{example['input']}\n\n### 応答:\n{example['output']}"
 
-    # SFTConfig (または TrainingArguments) の作成
-    # max_seq_length は必ずこちらに含める
-    if HAS_SFT_CONFIG:
-        training_args = SFTConfig(
-            output_dir=output_dir,
-            per_device_train_batch_size=per_device_train_batch_size,
-            gradient_accumulation_steps=gradient_accumulation_steps,
-            max_steps=max_steps,
-            learning_rate=learning_rate,
-            fp16=True,
-            logging_steps=10,
-            save_strategy="no",
-            report_to="none",
-            max_seq_length=max_seq_length, # Configに含める
-        )
-    else:
-        # SFTConfigがない古いバージョンの場合のみ、TrainingArgumentsを使う
-        training_args = TrainingArguments(
-            output_dir=output_dir,
-            per_device_train_batch_size=per_device_train_batch_size,
-            gradient_accumulation_steps=gradient_accumulation_steps,
-            max_steps=max_steps,
-            learning_rate=learning_rate,
-            fp16=True,
-            logging_steps=10,
-            save_strategy="no",
-            report_to="none",
-        )
-
-    # SFTTrainerの初期化
-    # 注意: ここで max_seq_length を直接渡さない
-    trainer_kwargs = {
-        "model": model,
-        "args": training_args,
-        "train_dataset": train_dataset,
-        "formatting_func": formatting_prompts_func,
-        "tokenizer": tokenizer,
+    # 基本的な学習設定
+    common_args = {
+        "output_dir": output_dir,
+        "per_device_train_batch_size": per_device_train_batch_size,
+        "gradient_accumulation_steps": gradient_accumulation_steps,
+        "max_steps": max_steps,
+        "learning_rate": learning_rate,
+        "fp16": True,
+        "logging_steps": 10,
+        "save_strategy": "no",
+        "report_to": "none",
     }
-    
-    # SFTConfigがない古いバージョンの場合のみ、Trainerに直接渡す必要がある場合がある
-    if not HAS_SFT_CONFIG:
-        trainer_kwargs["max_seq_length"] = max_seq_length
 
-    trainer = SFTTrainer(**trainer_kwargs)
+    # SFTConfigが利用可能な場合のみ、max_seq_lengthをコンストラクタに渡す
+    if ConfigClass is SFTConfig:
+        common_args['max_seq_length'] = max_seq_length
+
+    # 設定オブジェクトを作成
+    training_args = ConfigClass(**common_args)
+    
+    # SFTTrainerの初期化
+    # ここでは max_seq_length を絶対に直接渡さない
+    trainer = SFTTrainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        formatting_func=formatting_prompts_func,
+        tokenizer=tokenizer,
+    )
 
     print("Starting LoRA training...")
     trainer.train()
     print("Training finished.")
+
+    # 学習済みアダプタの保存
     adapter_save_path = os.path.join(output_dir, "final_adapter")
+    print(f"Saving LoRA adapter to: {adapter_save_path}")
     model.save_pretrained(adapter_save_path)
+    
     return trainer
 
 def load_lora_adapter(model, adapter_path: str):
+    """
+    学習済みLoRAアダプタをベースモデルにロードする。
+    """
     from peft import PeftModel
     if not os.path.exists(adapter_path):
         raise FileNotFoundError(f"Adapter path not found: {adapter_path}")
+        
     print(f"Loading LoRA adapter from: {adapter_path}")
     model = PeftModel.from_pretrained(model, adapter_path, trust_remote_code=True)
     print("LoRA adapter loaded successfully.")
