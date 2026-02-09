@@ -31,6 +31,10 @@ def create_lora_model(model, lora_rank=8, lora_alpha=16, lora_dropout=0.05):
     peft_model.print_trainable_parameters()
     return peft_model
 
+import inspect
+from transformers import TrainingArguments
+from trl import SFTTrainer, SFTConfig
+
 def train_lora(
     model,
     tokenizer,
@@ -44,41 +48,25 @@ def train_lora(
 ):
     """
     QLoRAの学習を実行する。
-    エラー回避のため、SFTTrainerに渡す前にデータセットを事前整形する版。
+    実行環境のSFTTrainerの仕様を動的に判定して引数を構築する安全版。
     """
-    # 1. トークナイザの設定
+    # 1. トークナイザ設定
     tokenizer.pad_token = tokenizer.eos_token
-    # パディング側を右側に統一（SFTでは一般的）
-    tokenizer.padding_side = "right" 
-
+    tokenizer.padding_side = "right"
+    
     print(f"Loading training dataset from: {train_dataset_path}")
     train_dataset = load_dataset("json", data_files=train_dataset_path, split="train")
 
-    # ---------------------------------------------------------
-    # 【修正の肝】: SFTTrainerの内部関数(formatting_func)は使わない。
-    # 事前に dataset.map で「text」カラムを作成し、リスト問題を回避する。
-    # ---------------------------------------------------------
-    def pre_process_data(batch):
-        # バッチ処理されるため、batch['input'] はリストです
-        texts = []
-        for i, o in zip(batch['input'], batch['output']):
-            # ここでプロンプトを組み立て、EOSトークンまで含める
+    # 2. フォーマット関数
+    # エラー回避のため、純粋なリスト[str]を返す形にします
+    def formatting_prompts_func(example):
+        output_texts = []
+        for i, o in zip(example['input'], example['output']):
             text = f"### 指示:\n{i}\n\n### 応答:\n{o}{tokenizer.eos_token}"
-            texts.append(text)
-        return {"text": texts}
+            output_texts.append(text)
+        return output_texts
 
-    print("Formatting dataset explicitly...")
-    # 元のカラム(input, output)を残すと混乱の元になるので remove_columns で消す
-    train_dataset = train_dataset.map(
-        pre_process_data, 
-        batched=True, 
-        remove_columns=train_dataset.column_names
-    )
-    print("Dataset formatted. Example:", train_dataset[0]['text'][:50] + "...")
-
-    # ---------------------------------------------------------
-    # 2. 学習設定 (SFTConfig 対応)
-    # ---------------------------------------------------------
+    # 3. 学習設定 (Config)
     common_args = {
         "output_dir": output_dir,
         "per_device_train_batch_size": per_device_train_batch_size,
@@ -89,34 +77,89 @@ def train_lora(
         "logging_steps": 10,
         "save_strategy": "no",
         "report_to": "none",
-        # dataset_text_fieldを使う場合は max_seq_length をここに入れないのが無難
+        "remove_unused_columns": False, 
     }
 
-    # クラス判定による引数生成
-    if ConfigClass.__name__ == "SFTConfig":
-        # 最新版 trl では max_seq_length を config に含めることが推奨される場合があるが、
-        # 下位互換性のため trainer 引数で渡す方式を採用する
-        training_args = ConfigClass(**common_args, dataset_text_field="text")
+    # SFTConfigが使える場合は、max_seq_lengthなどはConfigに入れるのが今の流儀
+    if "dataset_kwargs" in inspect.signature(SFTConfig).parameters:
+         # 新しいバージョンでは dataset_kwargs を使う場合があるが、
+         # ここでは安全のため max_seq_length だけチェックして入れる
+         pass
+
+    # max_seq_length を Config に入れるべきかどうかの判定
+    # (ConfigClass が SFTConfig の場合のみ)
+    if issubclass(ConfigClass, SFTConfig):
+        # SFTConfigなら max_seq_length を受け取る可能性がある
+        try:
+            training_args = ConfigClass(**common_args, max_seq_length=max_seq_length)
+            print("Config: SFTConfig initialized with max_seq_length.")
+        except TypeError:
+            # 受け取らないバージョンなら外して初期化
+            training_args = ConfigClass(**common_args)
+            print("Config: SFTConfig initialized without max_seq_length.")
     else:
+        # TrainingArguments ならそのまま
         training_args = ConfigClass(**common_args)
+
+
+    # 4. SFTTrainer の引数構築（動的検査）
+    # 現在の環境の SFTTrainer.__init__ の引数を全て取得
+    signature = inspect.signature(SFTTrainer.__init__)
+    valid_params = signature.parameters.keys()
     
-    # ---------------------------------------------------------
-    # 3. SFTTrainer の初期化
-    # ---------------------------------------------------------
-    trainer = SFTTrainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        dataset_text_field="text",  # 事前に作った「text」カラムを指定
-        max_seq_length=max_seq_length,
-        processing_class=tokenizer, # tokenizer引数の最新版対応
-    )
+    print(f"Detected SFTTrainer arguments: {list(valid_params)}")
+
+    trainer_kwargs = {
+        "model": model,
+        "args": training_args,
+        "train_dataset": train_dataset,
+    }
+
+    # --- 引数の動的割り当て ---
+
+    # (A) formatting_func (ほぼ全てのバージョンで必須)
+    if "formatting_func" in valid_params:
+        trainer_kwargs["formatting_func"] = formatting_prompts_func
+
+    # (B) max_seq_length (Configに入れた場合は不要だが、Trainer引数にあるなら念のため渡すか、Config優先か)
+    # 通常、Trainer引数で渡すのが安全
+    if "max_seq_length" in valid_params:
+        trainer_kwargs["max_seq_length"] = max_seq_length
+
+    # (C) Tokenizer / Processing Class
+    if "processing_class" in valid_params:
+        print("Using 'processing_class' argument.")
+        trainer_kwargs["processing_class"] = tokenizer
+    elif "tokenizer" in valid_params:
+        print("Using 'tokenizer' argument.")
+        trainer_kwargs["tokenizer"] = tokenizer
+    
+    # (D) dataset_text_field
+    # これがあると formatting_func と競合する場合があるが、
+    # formatting_func があるので、あえて指定しない方が安全なケースが多い。
+    # しかし、一部バージョンで必須の場合は空文字などを入れる必要があるか確認。
+    # 今回のエラーは "unexpected keyword" だったので、存在しない場合は渡さない。
+    if "dataset_text_field" in valid_params:
+        # formatting_funcを使う場合、dataset_text_fieldは通常不要だが、
+        # 念のためNone明示か、あるいはformatting_func優先で渡さない。
+        # 今回は「渡さない」を選択（formatting_funcがあれば無視されるか、競合するため）
+        pass
+
+    # 5. 初期化と実行
+    print("Initializing SFTTrainer with validated arguments...")
+    try:
+        trainer = SFTTrainer(**trainer_kwargs)
+    except Exception as e:
+        # 万が一のパッキングエラー等をキャッチ
+        print(f"Initialization failed: {e}")
+        print("Detailed parameters attempt:", trainer_kwargs.keys())
+        raise e
 
     print("Starting LoRA training...")
     trainer.train()
     print("Training finished.")
 
-    # 学習済みアダプタの保存
+    # 保存
     adapter_save_path = os.path.join(output_dir, "final_adapter")
     print(f"Saving LoRA adapter to: {adapter_save_path}")
     trainer.model.save_pretrained(adapter_save_path)
