@@ -17,7 +17,6 @@
 
 | 回 | ノートブック | テーマ | Colabで開く |
 | :--- | :--- | :--- | :--- |
-| **00** | `00_setup_common.ipynb` | **共通セットアップ** (最初に必ず実行) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/00_setup_common.ipynb) |
 | **01** | `01_gpt_baseline.ipynb` | LLM単体での生成体験 (ハルシネーションの観察) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/01_gpt_baseline.ipynb) |
 | **02** | `02_prompting.ipynb` | プロンプトエンジニアリング基礎 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/02_prompting.ipynb) |
 | **03** | `03_rag_concept_demo.ipynb` | RAGの概念デモ (手動RAG) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/03_rag_concept_demo.ipynb) |
@@ -28,13 +27,9 @@
 
 ## 実行手順の詳細
 
-1. **`00_setup_common.ipynb` の実行**:
-   - 最初に必ず `00_setup_common.ipynb` を実行し、ライブラリのインストールを行ってください。
-   - インストール完了後、**「ランタイムを再起動」** する必要があります（ノートブック内の指示に従ってください）。
-
-2. **各演習の実行**:
+1. **各演習の実行**:
    - `01` から順に進めてください。
-   - 各ノートブックの冒頭で自動的にリポジトリのクローンが行われ、必要なプログラムが読み込まれます。
+   - 各ノートブックの冒頭で、必要なライブラリのインストールとリポジトリのクローンが自動的に行われます。
 
 ## 推奨環境
 
