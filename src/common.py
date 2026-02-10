@@ -14,7 +14,7 @@ def load_llm(model_id: str = DEFAULT_MODEL_ID, use_4bit: bool = True):
             load_in_4bit=True,
             bnb_4bit_use_double_quant=True,
             bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.float16, # T4 GPUでの安定性のためにfloat16
+            bnb_4bit_compute_dtype=torch.float16, 
         )
 
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
@@ -29,7 +29,10 @@ def load_llm(model_id: str = DEFAULT_MODEL_ID, use_4bit: bool = True):
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     
+    # 推論用にキャッシュを有効化
+    model.config.use_cache = True
     model.eval()
+    
     print("Model and tokenizer loaded successfully.")
     return model, tokenizer
 
@@ -43,12 +46,13 @@ def generate_text(
     """
     入力を受け取り、モデルに適した形式でテキストを生成します。
     """
-    # すでに ### 指示: などのタグが含まれている場合は、チャットテンプレートを通さずそのまま使う
-    # これにより、既存のノートブック（01-05）との互換性を保つ
-    if "### 指示:" in user_input or "### 応答:" in user_input:
+    # キャッシュを確実に有効化 (学習後にFalseのままになっているのを防ぐ)
+    model.config.use_cache = True
+    
+    # ノートブック側の手動タグを優先し、二重ラップを防ぐ
+    if "### 指示:" in user_input:
         prompt = user_input
     else:
-        # 新しい形式（タグなし）の場合はチャットテンプレートを適用
         messages = [{"role": "user", "content": user_input}]
         prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 

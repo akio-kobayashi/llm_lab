@@ -8,7 +8,10 @@ def create_lora_model(model, lora_rank=8, lora_alpha=16, lora_dropout=0.05):
     """
     ベースモデルにLoRAアダプタを追加。
     """
+    # 学習時はキャッシュを完全に無効化
+    model.config.use_cache = False
     model.gradient_checkpointing_enable()
+    
     model = prepare_model_for_kbit_training(model)
     model.enable_input_require_grads()
 
@@ -18,10 +21,12 @@ def create_lora_model(model, lora_rank=8, lora_alpha=16, lora_dropout=0.05):
         lora_dropout=lora_dropout,
         bias="none",
         task_type="CAUSAL_LM",
-        # 全層に適用することで学習を安定化
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"], 
+        # 安定性のためにQ/Vのみ
+        target_modules=["q_proj", "v_proj"], 
     )
     peft_model = get_peft_model(model, lora_config)
+    
+    # PEFTモデル側でもキャッシュを無効化
     peft_model.config.use_cache = False
     
     print("PEFT model created successfully.")
@@ -34,13 +39,16 @@ def train_lora(
     output_dir: str = "./lora_adapter",
     per_device_train_batch_size: int = 1,
     gradient_accumulation_steps: int = 8,
-    max_steps: int = 60,
-    learning_rate: float = 5e-5, # 崩壊を防ぐ低い学習率
+    max_steps: int = 40,
+    learning_rate: float = 2e-5, # さらに学習率を下げて崩壊を阻止
     max_seq_length: int = 512,
 ):
     """
-    既存ノートブックの形式 (### 指示:) を維持しつつ、安定して学習する。
+    崩壊を阻止する超安定版。
     """
+    # 学習開始前に再度キャッシュを確認
+    model.config.use_cache = False
+    
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "right" 
@@ -48,7 +56,7 @@ def train_lora(
     train_dataset = load_dataset("json", data_files=train_dataset_path, split="train")
 
     def format_for_training(example):
-        # 既存ノートブック(01-07)と完全に一致するプロンプト形式
+        # ノートブック 01-07 の形式と完全に一致させる
         text = f"以下は、タスクを説明する指示です。要求を適切に満たす応答を書きなさい。\n\n### 指示:\n{example['input']}\n\n### 応答:\n{example['output']}{tokenizer.eos_token}"
         return {"text": text}
 
@@ -79,7 +87,7 @@ def train_lora(
         remove_unused_columns=False,
         gradient_checkpointing=True,
         lr_scheduler_type="constant",
-        max_grad_norm=0.3,
+        max_grad_norm=0.1, # 勾配を厳しく制限
     )
 
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
@@ -91,16 +99,24 @@ def train_lora(
         data_collator=data_collator,
     )
 
-    print("Starting stable LoRA training...")
+    print("Starting ultra-stable LoRA training...")
     trainer.train()
     
+    # 学習終了後、推論のためにキャッシュを戻す
     model.config.use_cache = True
+    
     adapter_save_path = os.path.join(output_dir, "final_adapter")
     model.save_pretrained(adapter_save_path)
     return trainer
 
 def load_lora_adapter(model, adapter_path: str):
     from peft import PeftModel
+    print(f"Loading LoRA adapter from: {adapter_path}")
     model = PeftModel.from_pretrained(model, adapter_path)
+    
+    # 推論用にキャッシュとevalモードを確実に設定
+    model.config.use_cache = True
     model.eval()
+    
+    print("LoRA adapter loaded successfully.")
     return model
