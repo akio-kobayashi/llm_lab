@@ -103,12 +103,12 @@ def train_lora(
         max_steps=max_steps,
         learning_rate=learning_rate,
         fp16=True, # T4 GPUではbfloat16よりfp16が一般的
+        use_cache=False,
         logging_steps=10,
         save_strategy="no", # 小規模演習のため、チェックポイントは保存しない
         report_to="none",
         remove_unused_columns=False, # DataCollatorが処理するため、未使用カラムは削除しない
         gradient_checkpointing=True, # メモリ節約のため有効化
-        # use_cache=False, # gradient_checkpointingと競合するため無効化 (Trainerが自動で設定するはず)
     )
 
     # 4. DataCollatorの準備
