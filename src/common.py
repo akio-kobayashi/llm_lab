@@ -45,8 +45,7 @@ def generate_text(
     """
     チャットテンプレートを使用して、モデルに最適な形式で生成します。
     """
-    # モデル固有のフォーマット（chat_template）を適用
-    # これにより「ユーザー：」などのタグを自分で書く必要がなくなります
+    # 学習時と同じ形式で入力を構成
     messages = [{"role": "user", "content": user_input}]
     prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
@@ -54,6 +53,7 @@ def generate_text(
         max_new_tokens=max_new_tokens,
         temperature=temperature,
         do_sample=True,
+        repetition_penalty=1.1, # 繰り返しと崩壊を抑制
         pad_token_id=tokenizer.pad_token_id,
         eos_token_id=tokenizer.eos_token_id,
     )
