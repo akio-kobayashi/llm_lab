@@ -2,8 +2,7 @@ import os
 import torch
 from datasets import load_dataset
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
-from transformers import TrainingArguments
-from trl import SFTTrainer
+from transformers import DataCollatorForLanguageModeling, Trainer, TrainingArguments
 
 def create_lora_model(model, lora_rank=8, lora_alpha=16, lora_dropout=0.05):
     """
@@ -64,19 +63,36 @@ def train_lora(
         trainer: 学習済みTrainerオブジェクト。
     """
     # Tokenizerのパディング設定
-    tokenizer.pad_token = tokenizer.eos_token
+    if tokenizer.pad_token_id is None and tokenizer.eos_token_id is not None:
+        tokenizer.pad_token = tokenizer.eos_token
     
     # データセットのロード
     print(f"Loading training dataset from: {train_dataset_path}")
     train_dataset = load_dataset("json", data_files=train_dataset_path, split="train")
 
-    # プロンプト形式に整形する関数
-    def formatting_prompts_func(example):
-        output_texts = []
-        for i in range(len(example['input'])):
-            text = f"### 指示:\n{example['input'][i]}\n\n### 応答:\n{example['output'][i]}"
-            output_texts.append(text)
-        return output_texts
+    # 学習テキストを作成し、tokenizeしてTrainerで直接扱える形式に変換
+    def build_text(example):
+        return {"text": f"### 指示:\n{example['input']}\n\n### 応答:\n{example['output']}"}
+
+    train_dataset = train_dataset.map(build_text)
+
+    tokenizer.padding_side = "right"
+
+    def tokenize_function(examples):
+        tokenized = tokenizer(
+            examples["text"],
+            truncation=True,
+            max_length=max_seq_length,
+            padding=False,
+        )
+        tokenized["labels"] = tokenized["input_ids"].copy()
+        return tokenized
+
+    train_dataset = train_dataset.map(
+        tokenize_function,
+        batched=True,
+        remove_columns=train_dataset.column_names,
+    )
 
     # トレーニング引数の設定
     training_args = TrainingArguments(
@@ -85,19 +101,20 @@ def train_lora(
         gradient_accumulation_steps=gradient_accumulation_steps,
         max_steps=max_steps,
         learning_rate=learning_rate,
-        fp16=True, # 量子化モデルではfp16=Trueが推奨される
+        fp16=torch.cuda.is_available(), # GPUがあるときのみfp16
         logging_steps=10,
         save_strategy="no", # 小規模演習のため保存は最後のみ
         report_to="none", # wandbなどを使わない場合はnone
+        remove_unused_columns=False,
     )
 
-    # SFTTrainerの初期化
-    trainer = SFTTrainer(
+    data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
+
+    trainer = Trainer(
         model=model,
-        train_dataset=train_dataset,
-        formatting_func=formatting_prompts_func,
-        max_seq_length=max_seq_length,
         args=training_args,
+        train_dataset=train_dataset,
+        data_collator=data_collator,
     )
 
     # 学習の開始

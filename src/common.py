@@ -1,5 +1,11 @@
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, pipeline
+from transformers import (
+    AutoConfig,
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    BitsAndBytesConfig,
+    pipeline,
+)
 
 # --- 編集可能: モデル設定 ---
 # stabilityai/japanese-stablelm-3b-4e1t-instruct
@@ -22,18 +28,13 @@ def load_llm(model_id: str = DEFAULT_MODEL_ID, use_4bit: bool = True):
     print(f"Loading model: {model_id}")
     print(f"Using 4-bit quantization: {use_4bit}")
 
-    # T4などbf16非対応GPUではfloat16を使う
-    compute_dtype = torch.float16
-    if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
-        compute_dtype = torch.bfloat16
-
     if use_4bit:
         # 4bit量子化の設定
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_use_double_quant=True,
             bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=compute_dtype,
+            bnb_4bit_compute_dtype=torch.bfloat16,
         )
     else:
         bnb_config = None
@@ -45,14 +46,36 @@ def load_llm(model_id: str = DEFAULT_MODEL_ID, use_4bit: bool = True):
         print(f"Error loading tokenizer for {model_id}: {e}")
         raise
 
+    # Tokenizerのpad/eos整合性を先に確保
+    if tokenizer.pad_token_id is None and tokenizer.eos_token_id is not None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    # 一部モデルでpad_token_id属性が欠けるケースに備えてconfigを補完
+    try:
+        model_config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
+    except Exception as e:
+        print(f"Error loading config for {model_id}: {e}")
+        raise
+
+    if not hasattr(model_config, "pad_token_id") or model_config.pad_token_id is None:
+        if tokenizer.pad_token_id is not None:
+            model_config.pad_token_id = tokenizer.pad_token_id
+        elif tokenizer.eos_token_id is not None:
+            model_config.pad_token_id = tokenizer.eos_token_id
+
     # モデルのロード
     try:
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
+            config=model_config,
             trust_remote_code=True,
             quantization_config=bnb_config,
             device_map="auto",  # GPUに自動で割り当て
         )
+        if getattr(model.config, "pad_token_id", None) is None and tokenizer.pad_token_id is not None:
+            model.config.pad_token_id = tokenizer.pad_token_id
+        if hasattr(model, "generation_config") and getattr(model.generation_config, "pad_token_id", None) is None:
+            model.generation_config.pad_token_id = model.config.pad_token_id
         model.eval() # 評価モード
     except Exception as e:
         print(f"Error loading model for {model_id}: {e}")
