@@ -22,13 +22,18 @@ def load_llm(model_id: str = DEFAULT_MODEL_ID, use_4bit: bool = True):
     print(f"Loading model: {model_id}")
     print(f"Using 4-bit quantization: {use_4bit}")
 
+    # T4などbf16非対応GPUではfloat16を使う
+    compute_dtype = torch.float16
+    if torch.cuda.is_available() and torch.cuda.is_bf16_supported():
+        compute_dtype = torch.bfloat16
+
     if use_4bit:
         # 4bit量子化の設定
         bnb_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_use_double_quant=True,
             bnb_4bit_quant_type="nf4",
-            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_compute_dtype=compute_dtype,
         )
     else:
         bnb_config = None
@@ -139,4 +144,3 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"\nSelf-test failed: {e}")
         print("Please ensure you have enough GPU memory and required libraries are installed.")
-
