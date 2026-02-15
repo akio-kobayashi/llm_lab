@@ -4,43 +4,45 @@ def create_gradio_ui(
     generate_func_plain,
     generate_func_rag,
     generate_func_lora,
-    generate_func_rag_lora
+    generate_func_rag_lora,
+    examples=None
 ):
     """
     RAGとLoRAのON/OFFを切り替えられるGradioデモUIを作成する。
 
     Args:
         generate_func_plain: RAGなし, LoRAなしの生成関数。
-        generate_func_rag: RAGあり, LoRAなしの生成関数。
-        generate_func_lora: RAGなし, LoRAありの生成関数。
-        generate_func_rag_lora: RAGあり, LoRAありの生成関数。
+        ... (他の生成関数)
+        examples: UIに表示するサンプル入力のリスト。
         
     Returns:
         gradio.Blocks: 生成されたGradio UI。
     """
     
+    # デフォルトのサンプル入力
+    if examples is None:
+        examples = [
+            ["「星屑のメモリー」の主人公は誰ですか？", True, False],
+            ["「古都の探偵録」のあらすじをJSONで教えてください。", True, True],
+            ["富士山の高さは？", False, True],
+            ["最近の流行りのアニメについて教えて。", False, False],
+        ]
+    
     def combined_generate(query, use_rag, use_lora):
-        """
-        チェックボックスの状態に応じて適切な生成関数を呼び出す。
-        """
         print(f"Query: '{query}', RAG: {use_rag}, LoRA: {use_lora}")
         
         if use_rag and use_lora:
-            # RAG + LoRA
             output, context = generate_func_rag_lora(query)
             return output, context
         elif use_rag:
-            # RAGのみ
             output, context = generate_func_rag(query)
             return output, context
         elif use_lora:
-            # LoRAのみ
             output = generate_func_lora(query)
-            return output, "LoRAモードでは引用はありません。"
+            return output, "LoRAモード(RAGなし)では引用情報はありません。"
         else:
-            # Plain (素のLLM)
             output = generate_func_plain(query)
-            return output, "RAGを使用していないため、引用はありません。"
+            return output, "RAGを使用していないため引用はありません。素のLLMの知識で回答しています。"
 
     with gr.Blocks(theme=gr.themes.Soft()) as demo:
         gr.Markdown(
@@ -48,10 +50,8 @@ def create_gradio_ui(
             # 統合デモ: RAGとLoRAの連携
             
             このUIでは、これまでの演習で学んだ技術を組み合わせて、LLMの応答をどのように制御できるかを試すことができます。
-            - **RAG (Retrieval-Augmented Generation)**: ONにすると、外部知識（ドキュメント）を検索し、その内容を参考にして回答を生成します。
-            - **LoRA (Low-Rank Adaptation)**: ONにすると、特定のタスク（この場合はJSON形式での出力）にファインチューニングされたモデル（アダプタ）を使用して回答を生成します。
-            
-            それぞれのスイッチを切り替えて、LLMの振る舞いがどう変わるか観察してみましょう。
+            - **RAG (検索拡張生成)**: **ON**にすると、外部知識を検索し、その事実に基づいて回答します。
+            - **LoRA (出力形式の最適化)**: **ON**にすると、回答を必ずJSON形式で出力するように振る舞いが変わります。
             """
         )
         
@@ -67,15 +67,15 @@ def create_gradio_ui(
                     use_rag_checkbox = gr.Checkbox(label="RAGを有効にする", value=True)
                     use_lora_checkbox = gr.Checkbox(label="LoRAを有効にする", value=False)
                 
-                submit_button = gr.Button("生成", variant="primary")
+                submit_button = gr.Button("生成実行", variant="primary")
 
             with gr.Column(scale=2):
-                gr.Markdown("### 生成結果")
-                output_text = gr.Markdown(label="回答")
+                gr.Markdown("### 1. 生成された回答")
+                output_text = gr.Markdown(label="回答内容")
                 
-                gr.Markdown("### 引用/コンテキスト")
+                gr.Markdown("### 2. RAGが参照した根拠 (Evidence)")
                 context_text = gr.Textbox(
-                    label="RAGが参照した情報",
+                    label="検索されたドキュメント（JSON形式）",
                     lines=8,
                     interactive=False
                 )
@@ -87,47 +87,12 @@ def create_gradio_ui(
         )
         
         gr.Examples(
-            examples=[
-                ["「星屑のメモリー」の主人公は誰ですか？", True, False],
-                ["「東京サイバーパンク2042」について教えてください。", True, True],
-                ["日本の首都はどこですか？", False, True],
-                ["世界で一番高い山は何ですか？", False, False],
-            ],
+            examples=examples,
             inputs=[query_input, use_rag_checkbox, use_lora_checkbox],
             outputs=[output_text, context_text],
             fn=combined_generate,
-            cache_examples=False, # デモ用にキャッシュ無効
+            cache_examples=False,
+            label="試してみる質問例 (クリックすると入力されます)"
         )
 
     return demo
-
-if __name__ == '__main__':
-    # このファイルが直接実行された場合のダミー動作テスト
-    print("--- Running ui.py self-test ---")
-
-    # ダミーの生成関数を定義
-    def dummy_plain(query):
-        return f"【Plain】'{query}' に答えます。"
-
-    def dummy_rag(query):
-        context = f"'{query}' に関連するドキュメントを見つけました。"
-        return f"【RAG】'{query}' に答えます。", context
-
-    def dummy_lora(query):
-        return f"【LoRA】'{query}' に答えます。 (JSON形式風)"
-
-    def dummy_rag_lora(query):
-        context = f"'{query}' に関連するドキュメントを見つけました。"
-        return f"【RAG+LoRA】'{query}' に答えます。 (JSON形式風)", context
-
-    # UIの作成と起動
-    demo_ui = create_gradio_ui(
-        generate_func_plain=dummy_plain,
-        generate_func_rag=dummy_rag,
-        generate_func_lora=dummy_lora,
-        generate_func_rag_lora=dummy_rag_lora,
-    )
-    
-    print("Gradio UI created. Launching demo...")
-    # demo_ui.launch() # このまま実行するとプロセスがブロックされるためコメントアウト
-    print("Self-test finished. To run the demo, uncomment 'demo_ui.launch()' and run as a script.")
