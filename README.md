@@ -22,7 +22,6 @@
 | **03** | `03_rag_concept_demo.ipynb` | RAGの概念デモ (手動RAG) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/03_rag_concept_demo.ipynb) |
 | **04** | `04_rag_faiss_exercise.ipynb` | Faissを使った本格的なRAG実装 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/04_rag_faiss_exercise.ipynb) |
 | **05** | `05_lora_concept_demo.ipynb` | LoRAファインチューニングの概念デモ | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/05_lora_concept_demo.ipynb) |
-| **06** | `06_lora_qlora_exercise.ipynb` | QLoRAによる学習実践 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/06_lora_qlora_exercise.ipynb) |
 | **07** | `07_integrate_gradio.ipynb` | 統合演習 (RAG + LoRA + Gradio UI) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/07_integrate_gradio.ipynb) |
 
 ## 実行手順の詳細
@@ -61,5 +60,4 @@
 
 - [ ] `01_gpt_baseline.ipynb` でLLMからの応答が生成される。
 - [ ] `04_rag_faiss_exercise.ipynb` で質問に関連するドキュメントが検索され、表示される。
-- [ ] `06_lora_qlora_exercise.ipynb` の学習が完了し、学習済みアダプタが保存される。
 - [ ] `07_integrate_gradio.ipynb` でGradio UIが起動し、RAGやLoRAのON/OFFを切り替えて応答が生成される。
