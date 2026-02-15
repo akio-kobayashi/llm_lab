@@ -1,4 +1,5 @@
 import os
+import warnings
 import torch
 from datasets import load_dataset
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
@@ -18,7 +19,17 @@ def create_lora_model(model, lora_rank=8, lora_alpha=16, lora_dropout=0.05):
         peft_model: 学習可能なPEFTモデル。
     """
     # 量子化モデルを学習可能にする前処理
-    model = prepare_model_for_kbit_training(model)
+    # 一部環境ではここでCUDA device-side assertが出るため、失敗時はフォールバックする
+    try:
+        model = prepare_model_for_kbit_training(model)
+    except Exception as e:
+        warnings.warn(
+            "prepare_model_for_kbit_training() failed. "
+            "Falling back to direct LoRA injection without k-bit preparation. "
+            f"Original error: {e}"
+        )
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     # LoRAの設定
     lora_config = LoraConfig(
@@ -109,6 +120,12 @@ def train_lora(
     )
 
     data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
+
+    # 学習時はcacheを無効化してメモリと互換性を優先
+    if hasattr(model, "config"):
+        model.config.use_cache = False
+    if hasattr(model, "generation_config"):
+        model.generation_config.use_cache = False
 
     trainer = Trainer(
         model=model,
