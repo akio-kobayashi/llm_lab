@@ -1,11 +1,5 @@
 import torch
-import inspect
-from transformers import (
-    AutoConfig,
-    AutoTokenizer,
-    AutoModelForCausalLM,
-    BitsAndBytesConfig,
-)
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, pipeline
 
 # --- 編集可能: モデル設定 ---
 # stabilityai/japanese-stablelm-3b-4e1t-instruct
@@ -46,36 +40,14 @@ def load_llm(model_id: str = DEFAULT_MODEL_ID, use_4bit: bool = True):
         print(f"Error loading tokenizer for {model_id}: {e}")
         raise
 
-    # Tokenizerのpad/eos整合性を先に確保
-    if tokenizer.pad_token_id is None and tokenizer.eos_token_id is not None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    # 一部モデルでpad_token_id属性が欠けるケースに備えてconfigを補完
-    try:
-        model_config = AutoConfig.from_pretrained(model_id, trust_remote_code=True)
-    except Exception as e:
-        print(f"Error loading config for {model_id}: {e}")
-        raise
-
-    if not hasattr(model_config, "pad_token_id") or model_config.pad_token_id is None:
-        if tokenizer.pad_token_id is not None:
-            model_config.pad_token_id = tokenizer.pad_token_id
-        elif tokenizer.eos_token_id is not None:
-            model_config.pad_token_id = tokenizer.eos_token_id
-
     # モデルのロード
     try:
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
-            config=model_config,
             trust_remote_code=True,
             quantization_config=bnb_config,
             device_map="auto",  # GPUに自動で割り当て
         )
-        if getattr(model.config, "pad_token_id", None) is None and tokenizer.pad_token_id is not None:
-            model.config.pad_token_id = tokenizer.pad_token_id
-        if hasattr(model, "generation_config") and getattr(model.generation_config, "pad_token_id", None) is None:
-            model.generation_config.pad_token_id = model.config.pad_token_id
         model.eval() # 評価モード
     except Exception as e:
         print(f"Error loading model for {model_id}: {e}")
@@ -110,75 +82,35 @@ def generate_text(
     Returns:
         str: 生成されたテキスト。
     """
+    # パイプラインの作成
+    text_generation_pipeline = pipeline(
+        "text-generation",
+        model=model,
+        tokenizer=tokenizer,
+        torch_dtype=torch.bfloat16,
+        device_map="auto",
+        trust_remote_code=True,
+    )
+
     # テキスト生成の実行
     try:
-        inputs = tokenizer(prompt, return_tensors="pt")
-        model_device = next(model.parameters()).device
-        inputs = {k: v.to(model_device) for k, v in inputs.items()}
-
-        pad_token_id = tokenizer.pad_token_id
-        if pad_token_id is None:
-            pad_token_id = tokenizer.eos_token_id
-
-        # max_new_tokens と max_length の競合警告を避けるため、max_lengthのみ指定する
-        input_len = inputs["input_ids"].shape[1]
-        max_length = input_len + max_new_tokens
-
-        generate_kwargs = {
-            **inputs,
-            "max_length": max_length,
-            "temperature": temperature,
-            "top_p": top_p,
-            "repetition_penalty": repetition_penalty,
-            "do_sample": do_sample,
-            "pad_token_id": pad_token_id,
-            "eos_token_id": tokenizer.eos_token_id,
-            "use_cache": False,
-        }
-
-        # transformers バージョン差分に応じた互換パラメータを付与
-        gen_signature = inspect.signature(model.generate)
-        gen_params = gen_signature.parameters
-        if "return_legacy_cache" in gen_params:
-            generate_kwargs["return_legacy_cache"] = True
-        if "cache_implementation" in gen_params:
-            generate_kwargs["cache_implementation"] = "static"
-
-        # 念のためconfig側でもcacheを無効化
-        if hasattr(model, "config"):
-            model.config.use_cache = False
-        if hasattr(model, "generation_config"):
-            model.generation_config.use_cache = False
-            if hasattr(model.generation_config, "max_new_tokens"):
-                model.generation_config.max_new_tokens = None
-
-        generated_ids = model.generate(**generate_kwargs)
-        return tokenizer.decode(generated_ids[0], skip_special_tokens=True)
+        generated = text_generation_pipeline(
+            prompt,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            repetition_penalty=repetition_penalty,
+            do_sample=do_sample,
+            pad_token_id=tokenizer.eos_token_id,
+            num_return_sequences=1,
+        )
+        # パイプラインの出力はリストなので、最初の要素の生成テキストを返す
+        if generated and len(generated) > 0:
+            return generated[0]["generated_text"]
+        else:
+            return "Error: Text generation failed."
 
     except Exception as e:
-        # DynamicCache互換エラーに対する最終フォールバック
-        if "DynamicCache" in str(e):
-            try:
-                model.config.use_cache = False
-                if hasattr(model, "generation_config"):
-                    model.generation_config.use_cache = False
-                    model.generation_config.cache_implementation = None
-                fallback_ids = model.generate(
-                    **inputs,
-                    max_length=max_length,
-                    do_sample=do_sample,
-                    temperature=temperature,
-                    top_p=top_p,
-                    repetition_penalty=repetition_penalty,
-                    pad_token_id=pad_token_id,
-                    eos_token_id=tokenizer.eos_token_id,
-                    use_cache=False,
-                )
-                return tokenizer.decode(fallback_ids[0], skip_special_tokens=True)
-            except Exception as e2:
-                print(f"Error during text generation: {e2}")
-                return f"Error: {e2}"
-
         print(f"Error during text generation: {e}")
         return f"Error: {e}"
 
@@ -207,3 +139,4 @@ if __name__ == '__main__':
     except Exception as e:
         print(f"\nSelf-test failed: {e}")
         print("Please ensure you have enough GPU memory and required libraries are installed.")
+
