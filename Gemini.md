@@ -32,7 +32,7 @@ repo-root/
     04_rag_faiss_exercise.ipynb
     05_lora_concept_demo.ipynb
     06_lora_qlora_exercise.ipynb
-    07_integrate_gradio.ipynb
+    06_integrate_gradio.ipynb
   data/
     docs/
       anime_docs_sample.jsonl
@@ -129,7 +129,7 @@ repo-root/
 - QLoRAで短時間学習し、学習前後比較
 - 成功基準は「JSONが壊れない割合が増える」
 
-## 07_integrate_gradio.ipynb
+## 06_integrate_gradio.ipynb
 - RAG on/off、LoRA on/offを切り替えられるGradio UIを作成
 - 回答と引用チャンクを表示
 - ここまでの総まとめ（GPTは部品、設計がシステムを作る）
