@@ -1,10 +1,10 @@
 import torch
+import inspect
 from transformers import (
     AutoConfig,
     AutoTokenizer,
     AutoModelForCausalLM,
     BitsAndBytesConfig,
-    pipeline,
 )
 
 # --- 編集可能: モデル設定 ---
@@ -110,35 +110,75 @@ def generate_text(
     Returns:
         str: 生成されたテキスト。
     """
-    # パイプラインの作成
-    text_generation_pipeline = pipeline(
-        "text-generation",
-        model=model,
-        tokenizer=tokenizer,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-        trust_remote_code=True,
-    )
-
     # テキスト生成の実行
     try:
-        generated = text_generation_pipeline(
-            prompt,
-            max_new_tokens=max_new_tokens,
-            temperature=temperature,
-            top_p=top_p,
-            repetition_penalty=repetition_penalty,
-            do_sample=do_sample,
-            pad_token_id=tokenizer.eos_token_id,
-            num_return_sequences=1,
-        )
-        # パイプラインの出力はリストなので、最初の要素の生成テキストを返す
-        if generated and len(generated) > 0:
-            return generated[0]["generated_text"]
-        else:
-            return "Error: Text generation failed."
+        inputs = tokenizer(prompt, return_tensors="pt")
+        model_device = next(model.parameters()).device
+        inputs = {k: v.to(model_device) for k, v in inputs.items()}
+
+        pad_token_id = tokenizer.pad_token_id
+        if pad_token_id is None:
+            pad_token_id = tokenizer.eos_token_id
+
+        # max_new_tokens と max_length の競合警告を避けるため、max_lengthのみ指定する
+        input_len = inputs["input_ids"].shape[1]
+        max_length = input_len + max_new_tokens
+
+        generate_kwargs = {
+            **inputs,
+            "max_length": max_length,
+            "temperature": temperature,
+            "top_p": top_p,
+            "repetition_penalty": repetition_penalty,
+            "do_sample": do_sample,
+            "pad_token_id": pad_token_id,
+            "eos_token_id": tokenizer.eos_token_id,
+            "use_cache": False,
+        }
+
+        # transformers バージョン差分に応じた互換パラメータを付与
+        gen_signature = inspect.signature(model.generate)
+        gen_params = gen_signature.parameters
+        if "return_legacy_cache" in gen_params:
+            generate_kwargs["return_legacy_cache"] = True
+        if "cache_implementation" in gen_params:
+            generate_kwargs["cache_implementation"] = "static"
+
+        # 念のためconfig側でもcacheを無効化
+        if hasattr(model, "config"):
+            model.config.use_cache = False
+        if hasattr(model, "generation_config"):
+            model.generation_config.use_cache = False
+            if hasattr(model.generation_config, "max_new_tokens"):
+                model.generation_config.max_new_tokens = None
+
+        generated_ids = model.generate(**generate_kwargs)
+        return tokenizer.decode(generated_ids[0], skip_special_tokens=True)
 
     except Exception as e:
+        # DynamicCache互換エラーに対する最終フォールバック
+        if "DynamicCache" in str(e):
+            try:
+                model.config.use_cache = False
+                if hasattr(model, "generation_config"):
+                    model.generation_config.use_cache = False
+                    model.generation_config.cache_implementation = None
+                fallback_ids = model.generate(
+                    **inputs,
+                    max_length=max_length,
+                    do_sample=do_sample,
+                    temperature=temperature,
+                    top_p=top_p,
+                    repetition_penalty=repetition_penalty,
+                    pad_token_id=pad_token_id,
+                    eos_token_id=tokenizer.eos_token_id,
+                    use_cache=False,
+                )
+                return tokenizer.decode(fallback_ids[0], skip_special_tokens=True)
+            except Exception as e2:
+                print(f"Error during text generation: {e2}")
+                return f"Error: {e2}"
+
         print(f"Error during text generation: {e}")
         return f"Error: {e}"
 
