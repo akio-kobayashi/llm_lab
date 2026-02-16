@@ -46,14 +46,25 @@ def load_llm(model_id: str = DEFAULT_MODEL_ID, use_4bit: bool = True):
 
     # Tokenizerのロード
     try:
-        tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+        tokenizer = AutoTokenizer.from_pretrained(
+            model_id,
+            trust_remote_code=True,
+            use_fast=True,
+        )
     except Exception as e:
         print(f"Error loading tokenizer for {model_id}: {e}")
         raise
 
-    # Tokenizerのpad/eos整合性を先に確保
-    if tokenizer.pad_token_id is None and tokenizer.eos_token_id is not None:
-        tokenizer.pad_token = tokenizer.eos_token
+    # japanese-stablelm系では <|endoftext|> をEOSとして明示し、
+    # BOSがEOSと同一IDになる状態は回避する
+    vocab = tokenizer.get_vocab()
+    if "<|endoftext|>" in vocab:
+        eos_id = vocab["<|endoftext|>"]
+        tokenizer.eos_token = "<|endoftext|>"
+        tokenizer.eos_token_id = eos_id
+    if tokenizer.bos_token_id == tokenizer.eos_token_id or tokenizer.bos_token_id is None:
+        tokenizer.bos_token = None
+        tokenizer.bos_token_id = None
 
     # 一部モデルでpad_token_id属性が欠けるケースに備えてconfigを補完
     try:
