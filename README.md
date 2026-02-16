@@ -21,7 +21,9 @@
 | **02** | `02_prompting.ipynb` | プロンプトエンジニアリング基礎 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/02_prompting.ipynb) |
 | **03** | `03_rag_concept_demo.ipynb` | RAGの概念デモ (手動RAG) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/03_rag_concept_demo.ipynb) |
 | **04** | `04_rag_faiss_exercise.ipynb` | Faissを使った本格的なRAG実装 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/04_rag_faiss_exercise.ipynb) |
-| **06** | `06_integrate_gradio.ipynb` | 統合演習 (RAG + Gradio UI) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/06_integrate_gradio.ipynb) |
+| **05** | `05_agent_basics_openclaw.ipynb` | OpenClawスタイルのエージェント基礎 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/05_agent_basics_openclaw.ipynb) |
+| **06** | `06_agent_gradio_ui.ipynb` | 05をベースにしたGradio UI付きエージェント | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/06_agent_gradio_ui.ipynb) |
+| **07** | `07_agent_rag_gradio_anime_202602.ipynb` | 2026年2月アニメ情報を使うRAG UIエージェント | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/07_agent_rag_gradio_anime_202602.ipynb) |
 
 ## 実行手順の詳細
 
@@ -59,4 +61,5 @@
 
 - [ ] `01_gpt_baseline.ipynb` でLLMからの応答が生成される。
 - [ ] `04_rag_faiss_exercise.ipynb` で質問に関連するドキュメントが検索され、表示される。
-- [ ] `06_integrate_gradio.ipynb` でGradio UIが起動し、RAGのON/OFFを切り替えて応答が生成される。
+- [ ] `06_agent_gradio_ui.ipynb` でGradio UIが起動し、エージェントの実行ログが表示される。
+- [ ] `07_agent_rag_gradio_anime_202602.ipynb` でRAGのON/OFFを切り替えて、2026年2月アニメ情報に基づく応答が生成される。
