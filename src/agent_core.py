@@ -197,6 +197,77 @@ class LLMPlannerCoderCriticAgent:
         return final_answer, full_log, steps
 
 
+class LLMExecutorCriticAgent:
+    """2ステップ構成（Executor & Critic）の軽量エージェント。
+    3Bクラスのモデルでも役割を混同しにくく、安定して動作します。
+    """
+
+    def __init__(
+        self,
+        llm_chat: Callable[[str, str, int, float], str],
+        role_configs: Optional[List[RoleConfig]] = None,
+        max_context_chars: int = 4000,
+    ):
+        self.llm_chat = llm_chat
+        self.max_context_chars = max_context_chars
+        self.role_configs = role_configs or [
+            RoleConfig(
+                "Executor",
+                "あなたは実行担当です。ユーザーの課題を分析し、最適な解決策やコードを提示してください。思考プロセス（計画）を述べた後、具体的な回答を書いてください。",
+                0.3,
+                800,
+            ),
+            RoleConfig(
+                "Critic",
+                "あなたは批評担当です。Executorの回答を客観的に点検し、誤り、不足、改善点を具体的に指摘してください。問題がない場合は、その理由を述べて承認してください。",
+                0.1,
+                500,
+            ),
+        ]
+
+    def _build_prompt(self, role: str, user_task: str, context: str) -> str:
+        prompt = "【ユーザー課題】\n" + user_task.strip() + "\n\n"
+        if context.strip():
+            prompt += "【これまでのやり取り】\n" + context.strip() + "\n\n"
+        prompt += f"【あなたの役割: {role}】\n"
+        prompt += "上記を踏まえて、あなたの役割に沿って出力してください。"
+        return prompt
+
+    def run_pipeline(self, user_task: str) -> Tuple[str, str, List[AgentStep]]:
+        logs: List[str] = []
+        steps: List[AgentStep] = []
+        context = ""
+
+        for idx, cfg in enumerate(self.role_configs, start=1):
+            prompt = self._build_prompt(cfg.name, user_task, context)
+            out = self.llm_chat(
+                cfg.system_prompt,
+                prompt,
+                max_new_tokens=cfg.max_new_tokens,
+                temperature=cfg.temperature,
+            )
+
+            logs.append(f"===== {cfg.name} =====\n{out}")
+            # コンテキストを更新（履歴を積み上げる）
+            context = (context + f"\n\n{cfg.name}:\n" + out)[-self.max_context_chars :]
+
+            steps.append(
+                AgentStep(
+                    step_no=idx,
+                    role=cfg.name,
+                    thought=f"{cfg.name} phase finished",
+                    action="llm_chat",
+                    action_input=user_task[:100],
+                    observation=out[:400],
+                )
+            )
+
+        full_log = "\n\n".join(logs)
+        # 最終的な回答はCriticの指摘を含めた全体とするか、最後の出力を取る
+        final_answer = logs[-1] if logs else ""
+        return final_answer, full_log, steps
+
+
 class RagAwareAgent:
     """3役エージェントにRAG根拠を付加する。"""
 

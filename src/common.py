@@ -86,6 +86,7 @@ def load_llm(model_id: str = DEFAULT_MODEL_ID, use_4bit: bool = True):
             config=model_config,
             trust_remote_code=True,
             quantization_config=bnb_config,
+            torch_dtype=compute_dtype,  # 修正: 量子化なしの場合もこの型を使用
             device_map="auto",  # GPUに自動で割り当て
         )
         if getattr(model.config, "pad_token_id", None) is None and tokenizer.pad_token_id is not None:
