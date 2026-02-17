@@ -1,8 +1,10 @@
 import ast
 import datetime as dt
+import json
 import math
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Dict
 
 
@@ -92,4 +94,42 @@ def make_default_registry() -> ToolRegistry:
     reg = ToolRegistry()
     reg.register(Tool("calculator", "数式を安全に計算する", safe_calculate))
     reg.register(Tool("today", "今日の日付を返す", today_tool))
+    reg.register(Tool("anime_seed_search", "2026年2月アニメ種データを参照する", anime_seed_search))
     return reg
+
+
+def anime_seed_search(query: str) -> str:
+    path = Path("data/anime_202602/anime_news_202602_seed.jsonl")
+    if not path.exists():
+        return "参照データが見つかりません。"
+
+    docs = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                docs.append(json.loads(line))
+
+    if not docs:
+        return "参照データが空です。"
+
+    q = query.lower()
+    scored = []
+    for d in docs:
+        text = f"{d.get('title','')} {d.get('summary','')}".lower()
+        score = 0
+        for token in ["2026", "2月", "アニメ", "最新", "一覧", "ニュース"]:
+            if token in q and token in text:
+                score += 1
+        scored.append((score, d))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top = [d for _, d in scored[:2]]
+
+    lines = []
+    for d in top:
+        lines.append(
+            f"- {d.get('date','')} | {d.get('title','')} | {d.get('source','')}\n"
+            f"  {d.get('summary','')}"
+        )
+    return "\n".join(lines)

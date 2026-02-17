@@ -50,6 +50,8 @@ class RulePlannerCoderCriticAgent:
 
     def _select_tool(self, query: str) -> Tuple[str, str]:
         q = query.lower()
+        if any(k in query for k in ["アニメ", "anime"]) and any(k in query for k in ["2026", "最新", "2月"]):
+            return "anime_seed_search", query
         if any(k in q for k in ["+", "-", "*", "/", "計算", "sqrt", "("]):
             return "calculator", query
         if any(k in query for k in ["今日", "日付", "today", "date"]):
@@ -81,6 +83,8 @@ class RulePlannerCoderCriticAgent:
             issues.append("回答本文が空です")
         if str(coded.get("observation", "")).startswith("計算エラー"):
             issues.append("計算ツールが失敗しています")
+        if coded.get("tool", "none") == "none" and any(k in plan.get("task_summary", "") for k in ["最新", "2026", "アニメ"]):
+            issues.append("データ参照が必要な問い合わせでツール未使用です")
         if plan.get("assumptions") and "前提:" not in coded.get("answer", ""):
             issues.append("前提の明示が不足しています")
         status = "pass" if not issues else "needs_fix"
