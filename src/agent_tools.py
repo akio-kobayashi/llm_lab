@@ -1,6 +1,7 @@
 import ast
 import datetime as dt
 import math
+import re
 from dataclasses import dataclass
 from typing import Callable, Dict
 
@@ -26,6 +27,11 @@ class ToolRegistry:
 
 
 def safe_calculate(expr: str) -> str:
+    # 自然文から計算に使える文字だけを抽出する。
+    expr = extract_math_expression(expr)
+    if not expr:
+        return "計算エラー: 数式を抽出できませんでした"
+
     allowed_names = {
         "pi": math.pi,
         "e": math.e,
@@ -67,6 +73,15 @@ def safe_calculate(expr: str) -> str:
         return str(result)
     except Exception as e:
         return f"計算エラー: {e}"
+
+
+def extract_math_expression(text: str) -> str:
+    # 例: "(23 + 17) * 5 を計算して" -> "(23 + 17) * 5"
+    candidates = re.findall(r"[0-9\.\+\-\*\/\(\)\s]+", text)
+    candidates = [c.strip() for c in candidates if c.strip()]
+    if not candidates:
+        return ""
+    return max(candidates, key=len)
 
 
 def today_tool(_: str) -> str:

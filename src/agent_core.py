@@ -79,6 +79,8 @@ class RulePlannerCoderCriticAgent:
         issues = []
         if not coded.get("answer"):
             issues.append("回答本文が空です")
+        if str(coded.get("observation", "")).startswith("計算エラー"):
+            issues.append("計算ツールが失敗しています")
         if plan.get("assumptions") and "前提:" not in coded.get("answer", ""):
             issues.append("前提の明示が不足しています")
         status = "pass" if not issues else "needs_fix"
