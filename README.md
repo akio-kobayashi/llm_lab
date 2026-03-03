@@ -8,20 +8,22 @@
 - **AIエージェント構成**: 回答（Executor）と検証（Critic）の2役を組み合わせ、LLMの自己修正プロセスを体験。
 - **RAG (Faiss)** とエージェントの統合により、信頼性の高い回答システムを構築。
 
-## 演習内容（全7回）
-1. **00_setup_common**: 環境セットアップ
-2. **01_gpt_baseline**: LLM単体での生成とハルシネーションの観察
-3. **02_prompting**: 指示による振る舞いの制御
-4. **03_rag_concept_demo**: RAGの基本概念
-5. **04_rag_faiss_exercise**: ベクトル検索 (Faiss) の実習
-6. **05_agent_basics**: エージェント（自己修正ループ）の基礎
-7. **06_agent_gradio_ui**: エージェント思考プロセスの可視化UI
-8. **07_agent_rag_gradio**: RAG統合マルチエージェント（最終課題）
+## 演習内容（全8回）
+各リンクをクリックすると Google Colab で直接開けます（GitHub の `ai_agent` ブランチを参照します）。
+
+1. [00_setup_common.ipynb](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/ai_agent/notebooks/00_setup_common.ipynb) - 環境セットアップ
+2. [01_gpt_baseline.ipynb](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/ai_agent/notebooks/01_gpt_baseline.ipynb) - LLM単体での生成とハルシネーションの観察
+3. [02_prompting.ipynb](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/ai_agent/notebooks/02_prompting.ipynb) - 指示による振る舞いの制御
+4. [03_rag_concept_demo.ipynb](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/ai_agent/notebooks/03_rag_concept_demo.ipynb) - RAGの基本概念
+5. [04_rag_faiss_exercise.ipynb](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/ai_agent/notebooks/04_rag_faiss_exercise.ipynb) - ベクトル検索 (Faiss) の実習
+6. [05_agent_basics.ipynb](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/ai_agent/notebooks/05_agent_basics.ipynb) - エージェント（自己修正ループ）の基礎
+7. [06_agent_gradio_ui.ipynb](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/ai_agent/notebooks/06_agent_gradio_ui.ipynb) - エージェント思考プロセスの可視化UI
+8. [07_agent_rag_gradio.ipynb](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/ai_agent/notebooks/07_agent_rag_gradio.ipynb) - RAG統合マルチエージェント（最終課題）
 
 ## 実行手順
-1. Google Colab で `notebooks/00_setup_common.ipynb` を開きます。
-2. ランタイムのタイプを **GPU (T4)** に変更します。
-3. 順番に実行してください。
+1. Google Colab で `00_setup_common.ipynb` を開きます。
+2. ランタイムのタイプを **GPU (T4)** に変更します（「ランタイム」メニュー → 「ランタイムのタイプを変更」）。
+3. ノートブック内の指示に従い、順番にセルを実行してください。
 
 ## ライセンス
 - MIT License
