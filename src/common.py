@@ -4,6 +4,10 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 # 固定設定 (GEMINI.md に基づく)
 MODEL_ID = "Qwen/Qwen3.5-4B"
 EMB_MODEL_ID = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+DEFAULT_SYSTEM_PROMPT = (
+    "あなたは親切で優秀な日本語AIアシスタントです。"
+    "思考過程や推論手順は出力せず、最終的な回答のみを日本語で簡潔に返してください。"
+)
 
 
 def _strip_reasoning_trace(text: str) -> str:
@@ -28,6 +32,43 @@ def _strip_reasoning_trace(text: str) -> str:
             cleaned = lines[-1].strip()
 
     return cleaned
+
+
+def _is_mostly_non_japanese(text: str) -> bool:
+    """
+    日本語文字がほぼ含まれない回答を検出する。
+    """
+    if not text:
+        return False
+    japanese_chars = sum(
+        1 for ch in text
+        if ("\u3040" <= ch <= "\u30ff") or ("\u4e00" <= ch <= "\u9fff")
+    )
+    return japanese_chars < 3
+
+
+def _generate_once(model, tokenizer, messages, max_new_tokens, temperature):
+    text = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True
+    )
+    inputs = tokenizer([text], return_tensors="pt").to(model.device)
+    with torch.no_grad():
+        generated_ids = model.generate(
+            **inputs,
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            top_p=0.9,
+            repetition_penalty=1.05,
+            do_sample=True,
+            pad_token_id=tokenizer.pad_token_id
+        )
+    generated_ids = [
+        output_ids[len(input_ids):] for input_ids, output_ids in zip(inputs.input_ids, generated_ids)
+    ]
+    decoded = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
+    return _strip_reasoning_trace(decoded)
 
 def load_llm(model_id=MODEL_ID, use_4bit=True):
     """
@@ -69,10 +110,7 @@ def generate_text(
     prompt,
     max_new_tokens=256,
     temperature=0.7,
-    system_prompt=(
-        "あなたは親切で優秀な日本語AIアシスタントです。"
-        "思考過程や推論手順は出力せず、最終的な回答のみを日本語で簡潔に返してください。"
-    ),
+    system_prompt=DEFAULT_SYSTEM_PROMPT,
 ):
     """
     推論用共通関数。Qwen 3.5 の Chat Template を使用。
@@ -81,29 +119,20 @@ def generate_text(
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": prompt}
     ]
-    text = tokenizer.apply_chat_template(
-        messages,
-        tokenize=False,
-        add_generation_prompt=True
-    )
-    
-    inputs = tokenizer([text], return_tensors="pt").to(model.device)
-    
-    with torch.no_grad():
-        generated_ids = model.generate(
-            **inputs,
-            max_new_tokens=max_new_tokens,
-            temperature=temperature,
-            top_p=0.9,
-            repetition_penalty=1.05,
-            do_sample=True,
-            pad_token_id=tokenizer.pad_token_id
-        )
-    
-    # 入力部分をカットしてデコード
-    generated_ids = [
-        output_ids[len(input_ids):] for input_ids, output_ids in zip(inputs.input_ids, generated_ids)
-    ]
-    
-    decoded = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
-    return _strip_reasoning_trace(decoded)
+    answer = _generate_once(model, tokenizer, messages, max_new_tokens, temperature)
+
+    # 既定設定で英語回答が出た場合のみ、日本語化を1回フォールバックする
+    if system_prompt == DEFAULT_SYSTEM_PROMPT and _is_mostly_non_japanese(answer):
+        fallback_messages = [
+            {
+                "role": "system",
+                "content": (
+                    "あなたは日本語の編集者です。"
+                    "入力文を自然で簡潔な日本語に言い換え、回答本文のみを出力してください。"
+                ),
+            },
+            {"role": "user", "content": answer},
+        ]
+        answer = _generate_once(model, tokenizer, fallback_messages, max_new_tokens, 0.2)
+
+    return answer
