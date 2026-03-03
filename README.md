@@ -1,65 +1,27 @@
-# 日本語LLM実践演習 (Google Colab版)
+# 日本語LLM (Qwen 3.5-4B) 演習キット for Google Colab
 
-本リポジトリは、日本語LLM（大規模言語モデル）の基本的な扱い方から、RAG、GradioによるUI作成までを段階的に学ぶための演習教材です。Google Colab (T4 GPU) での実行を想定しています。
+このリポジトリは、最新の日本語LLMをGoogle Colab（T4 GPU）で動かし、プロンプト、RAG、そして **AIエージェント** までを段階的に学ぶための演習教材です。
 
-## 演習の構成
+## 特徴
+- **最新モデル Qwen 3.5-4B-Instruct** を採用。
+- **4bit量子化 (bitsandbytes)** により、無料版Colabで安定動作。
+- **AIエージェント構成**: 回答（Executor）と検証（Critic）の2役を組み合わせ、LLMの自己修正プロセスを体験。
+- **RAG (Faiss)** とエージェントの統合により、信頼性の高い回答システムを構築。
 
-各ノートブックは、特定のテーマに沿った演習となっています。以下の手順に従って進めてください。
+## 演習内容（全7回）
+1. **00_setup_common**: 環境セットアップ
+2. **01_gpt_baseline**: LLM単体での生成とハルシネーションの観察
+3. **02_prompting**: 指示による振る舞いの制御
+4. **03_rag_concept_demo**: RAGの基本概念
+5. **04_rag_faiss_exercise**: ベクトル検索 (Faiss) の実習
+6. **05_agent_basics**: エージェント（自己修正ループ）の基礎
+7. **06_agent_gradio_ui**: エージェント思考プロセスの可視化UI
+8. **07_agent_rag_gradio**: RAG統合マルチエージェント（最終課題）
 
-### 【重要】演習の始め方
+## 実行手順
+1. Google Colab で `notebooks/00_setup_common.ipynb` を開きます。
+2. ランタイムのタイプを **GPU (T4)** に変更します。
+3. 順番に実行してください。
 
-1. 下記の表にある **「Colabで開く」** ボタンをクリックします。
-2. Google Colabが開いたら、まずメニューバーの **「ファイル」→「ドライブにコピーを保存」** をクリックしてください。
-3. 新しいタブで「コピー」が開きます。**必ずそのコピーされたノートブックを使って**演習を進めてください。
-   （元のノートブックのままでは、編集内容を保存できません）
-
-### ノートブック一覧
-
-| 回 | ノートブック | テーマ | Colabで開く |
-| :--- | :--- | :--- | :--- |
-| **01** | `01_gpt_baseline.ipynb` | LLM単体での生成体験 (ハルシネーションの観察) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/01_gpt_baseline.ipynb) |
-| **02** | `02_prompting.ipynb` | プロンプトエンジニアリング基礎 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/02_prompting.ipynb) |
-| **03** | `03_rag_concept_demo.ipynb` | RAGの概念デモ (手動RAG) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/03_rag_concept_demo.ipynb) |
-| **04** | `04_rag_faiss_exercise.ipynb` | Faissを使った本格的なRAG実装 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/04_rag_faiss_exercise.ipynb) |
-| **05** | `05_agent_basics_openclaw.ipynb` | OpenClawスタイルのエージェント基礎 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/05_agent_basics_openclaw.ipynb) |
-| **06** | `06_agent_gradio_ui.ipynb` | 05をベースにしたGradio UI付きエージェント | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/06_agent_gradio_ui.ipynb) |
-| **07** | `07_agent_rag_gradio_anime_202602.ipynb` | 2026年2月アニメ情報を使うRAG UIエージェント | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/main/notebooks/07_agent_rag_gradio_anime_202602.ipynb) |
-
-## 実行手順の詳細
-
-1. **各演習の実行**:
-   - `01` から順に進めてください。
-   - 各ノートブックの冒頭で、必要なライブラリのインストールとリポジトリのクローンが自動的に行われます。
-
-## 推奨環境
-
-- **プラットフォーム**: Google Colab
-- **GPU**: T4 GPU (無料版で利用可能)
-  - ノートブックの設定で `ランタイムのタイプを変更` -> `ハードウェア アクセラレータ` を `T4 GPU` に設定してください。
-- **VRAM**: 15GB程度を想定
-
-## よくあるエラーと対処法
-
-- **`OutOfMemoryError` (OOM)**: GPUメモリ不足のエラーです。
-  - **対処法**:
-    1. Colabの `ランタイム` -> `セッションを再起動` を試してください。
-    2. ノートブック内の `batch_size` や `max_seq_length` などのパラメータを小さくしてみてください。
-    3. 他のノートブックを開いている場合は、それらを閉じてから再度実行してください。
-
-- **`ModuleNotFoundError`**: ライブラリが見つからないエラーです。
-  - **対処法**:
-    1. ノートブック冒頭のインストールセルが正常に完了しているか確認してください。
-    2. `sys.path` を追加するセルが正しく実行されているか確認してください。
-
-- **モデルのロードに失敗する**:
-  - **対処法**:
-    1. Hugging Face Hubがダウンしていないか確認してください。
-    2. `model_id` の文字列が正しいか確認してください。
-    3. インターネット接続が安定しているか確認してください。
-
-## 動作確認チェックリスト
-
-- [ ] `01_gpt_baseline.ipynb` でLLMからの応答が生成される。
-- [ ] `04_rag_faiss_exercise.ipynb` で質問に関連するドキュメントが検索され、表示される。
-- [ ] `06_agent_gradio_ui.ipynb` でGradio UIが起動し、エージェントの実行ログが表示される。
-- [ ] `07_agent_rag_gradio_anime_202602.ipynb` でRAGのON/OFFを切り替えて、2026年2月アニメ情報に基づく応答が生成される。
+## ライセンス
+- MIT License
