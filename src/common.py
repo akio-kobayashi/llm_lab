@@ -44,7 +44,65 @@ def _is_mostly_non_japanese(text: str) -> bool:
         1 for ch in text
         if ("\u3040" <= ch <= "\u30ff") or ("\u4e00" <= ch <= "\u9fff")
     )
+    ascii_letters = sum(1 for ch in text if ("a" <= ch.lower() <= "z"))
+
+    # 日本語が十分あるなら日本語回答とみなす
+    if japanese_chars >= 20:
+        return False
+
+    # 英字が優勢なら非日本語とみなす
+    if ascii_letters >= 30 and ascii_letters > japanese_chars * 3:
+        return True
+
+    # 短文時の保険
     return japanese_chars < 3
+
+
+def _looks_incomplete_answer(text: str) -> bool:
+    """
+    箇条書き断片や短すぎる中途半端回答を検出する。
+    """
+    s = text.strip()
+    if not s:
+        return True
+
+    lower = s.lower()
+    bad_prefixes = (
+        "*",
+        "-",
+        "option ",
+        "option:",
+        "choice ",
+        "choice:",
+    )
+    if lower.startswith(bad_prefixes):
+        return True
+
+    # 句点なしの極端な短文は中途半端回答のことが多い
+    if len(s) < 20 and all(p not in s for p in ("。", "！", "？")):
+        return True
+
+    return False
+
+
+def _looks_meta_or_leaked_reasoning(text: str) -> bool:
+    """
+    回答として不適切な自己言及・メタ説明・推論漏洩を検出する。
+    """
+    s = text.strip().lower()
+    if not s:
+        return True
+
+    bad_fragments = (
+        "thinking process",
+        "given the context",
+        "issue:",
+        "i should",
+        "i need to",
+        "as an ai",
+        "rewrite what's there",
+    )
+    return any(fragment in s for fragment in bad_fragments)
 
 
 def _generate_once(model, tokenizer, messages, max_new_tokens, temperature):
@@ -54,6 +112,7 @@ def _generate_once(model, tokenizer, messages, max_new_tokens, temperature):
         add_generation_prompt=True
     )
     inputs = tokenizer([text], return_tensors="pt").to(model.device)
+    do_sample = temperature > 0
     with torch.no_grad():
         generated_ids = model.generate(
             **inputs,
@@ -61,7 +120,7 @@ def _generate_once(model, tokenizer, messages, max_new_tokens, temperature):
             temperature=temperature,
             top_p=0.9,
             repetition_penalty=1.05,
-            do_sample=True,
+            do_sample=do_sample,
             pad_token_id=tokenizer.pad_token_id
         )
     generated_ids = [
@@ -127,12 +186,32 @@ def generate_text(
             {
                 "role": "system",
                 "content": (
-                    "あなたは日本語の編集者です。"
-                    "入力文を自然で簡潔な日本語に言い換え、回答本文のみを出力してください。"
+                    "あなたは翻訳者です。"
+                    "入力文を自然な日本語に翻訳し、翻訳結果のみを出力してください。"
+                    "箇条書き記号や前置きは不要です。"
                 ),
             },
             {"role": "user", "content": answer},
         ]
-        answer = _generate_once(model, tokenizer, fallback_messages, max_new_tokens, 0.2)
+        answer = _generate_once(model, tokenizer, fallback_messages, max_new_tokens, 0.0)
+
+    # 断片的な回答を避けるための最終リトライ
+    if _looks_incomplete_answer(answer) or _looks_meta_or_leaked_reasoning(answer):
+        retry_messages = [
+            {
+                "role": "system",
+                "content": (
+                    "あなたは日本語アシスタントです。"
+                    "箇条書きや選択肢形式ではなく、自然な日本語の1〜2文で完結に回答してください。"
+                    "途中で切れた表現を避け、回答本文のみを出力してください。"
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ]
+        answer = _generate_once(model, tokenizer, retry_messages, max_new_tokens, 0.3)
+
+    # それでも不適切なら、事実回答として最低限の日本語を返す
+    if _looks_meta_or_leaked_reasoning(answer):
+        answer = "現時点で確認できる情報では特定できません。公式情報をご確認ください。"
 
     return answer
