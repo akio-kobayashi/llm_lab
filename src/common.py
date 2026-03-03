@@ -2,10 +2,13 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 # 固定設定 (GEMINI.md に基づく)
-MODEL_ID = "Qwen/Qwen3.5-4B"
+# 2023年世代のモデルは最新の chat_template に対応していないため、
+# 高性能かつモダンな Qwen2.5-3B-Instruct を採用します。
+MODEL_ID = "Qwen/Qwen2.5-3B-Instruct"
 EMB_MODEL_ID = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 DEFAULT_SYSTEM_PROMPT = (
     "あなたは親切で優秀な日本語AIアシスタントです。"
+    "必ず「日本語のみ」で回答してください。英語や他の言語は使用しないでください。"
     "思考過程や推論手順は出力せず、最終的な回答のみを日本語で簡潔に返してください。"
 )
 
@@ -112,16 +115,26 @@ def _generate_once(model, tokenizer, messages, max_new_tokens, temperature):
         add_generation_prompt=True
     )
     inputs = tokenizer([text], return_tensors="pt").to(model.device)
-    do_sample = temperature > 0
+    
+    # do_sample が False の場合は sampling parameters (temperature, top_p) を渡さないように修正
+    gen_kwargs = {
+        "max_new_tokens": max_new_tokens,
+        "repetition_penalty": 1.05,
+        "pad_token_id": tokenizer.pad_token_id,
+    }
+    
+    if temperature > 0:
+        gen_kwargs["do_sample"] = True
+        gen_kwargs["temperature"] = temperature
+        gen_kwargs["top_p"] = 0.9
+    else:
+        gen_kwargs["do_sample"] = False
+        # Greedy search の場合は temperature/top_p を含めないことで警告を回避
+
     with torch.no_grad():
         generated_ids = model.generate(
             **inputs,
-            max_new_tokens=max_new_tokens,
-            temperature=temperature,
-            top_p=0.9,
-            repetition_penalty=1.05,
-            do_sample=do_sample,
-            pad_token_id=tokenizer.pad_token_id
+            **gen_kwargs
         )
     generated_ids = [
         output_ids[len(input_ids):] for input_ids, output_ids in zip(inputs.input_ids, generated_ids)
