@@ -5,6 +5,30 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 MODEL_ID = "Qwen/Qwen3.5-4B"
 EMB_MODEL_ID = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
+
+def _strip_reasoning_trace(text: str) -> str:
+    """
+    モデルが思考過程を出力した場合に、最終回答のみを返す。
+    """
+    cleaned = text.strip()
+
+    # <think> ... </think> 形式
+    if "</think>" in cleaned:
+        cleaned = cleaned.split("</think>")[-1].strip()
+
+    # "Final Answer:" がある場合はその後ろを優先
+    for marker in ("Final Answer:", "最終回答:", "回答:"):
+        if marker in cleaned:
+            cleaned = cleaned.split(marker, 1)[-1].strip()
+
+    # "Thinking Process:" だけが残るケースを回避
+    if cleaned.lower().startswith("thinking process"):
+        lines = [line for line in cleaned.splitlines() if line.strip()]
+        if lines:
+            cleaned = lines[-1].strip()
+
+    return cleaned
+
 def load_llm(model_id=MODEL_ID, use_4bit=True):
     """
     Qwen 3.5 などのLLMをロードする共通関数。
@@ -39,7 +63,17 @@ def load_llm(model_id=MODEL_ID, use_4bit=True):
         
     return model, tokenizer
 
-def generate_text(model, tokenizer, prompt, max_new_tokens=256, temperature=0.7, system_prompt="あなたは親切で優秀な日本語AIアシスタントです。"):
+def generate_text(
+    model,
+    tokenizer,
+    prompt,
+    max_new_tokens=256,
+    temperature=0.7,
+    system_prompt=(
+        "あなたは親切で優秀な日本語AIアシスタントです。"
+        "思考過程や推論手順は出力せず、最終的な回答のみを日本語で簡潔に返してください。"
+    ),
+):
     """
     推論用共通関数。Qwen 3.5 の Chat Template を使用。
     """
@@ -71,4 +105,5 @@ def generate_text(model, tokenizer, prompt, max_new_tokens=256, temperature=0.7,
         output_ids[len(input_ids):] for input_ids, output_ids in zip(inputs.input_ids, generated_ids)
     ]
     
-    return tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
+    decoded = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
+    return _strip_reasoning_trace(decoded)
