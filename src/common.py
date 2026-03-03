@@ -2,7 +2,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 # 固定設定 (GEMINI.md に基づく)
-MODEL_ID = "Qwen/Qwen3.5-4B-Instruct"
+MODEL_ID = "Qwen/Qwen3.5-4B"
 EMB_MODEL_ID = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
 def load_llm(model_id=MODEL_ID, use_4bit=True):
