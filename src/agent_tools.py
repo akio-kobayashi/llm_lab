@@ -94,7 +94,7 @@ def make_default_registry() -> ToolRegistry:
     reg = ToolRegistry()
     reg.register(Tool("calculator", "数式を安全に計算する", safe_calculate))
     reg.register(Tool("today", "今日の日付を返す", today_tool))
-    reg.register(Tool("anime_seed_search", "2026年2月アニメ種データを参照する", anime_seed_search))
+    reg.register(Tool("anime_seed_search", "2027年2月アニメ種データを参照する", anime_seed_search))
     return reg
 
 
@@ -118,7 +118,7 @@ def anime_seed_search(query: str) -> str:
     for d in docs:
         text = f"{d.get('title','')} {d.get('summary','')}".lower()
         score = 0
-        for token in ["2026", "2月", "アニメ", "最新", "一覧", "ニュース"]:
+        for token in ["2027", "2月", "アニメ", "最新", "一覧", "ニュース"]:
             if token in q and token in text:
                 score += 1
         scored.append((score, d))

@@ -49,9 +49,9 @@ def ensure_anime_news_file(path: str):
         return
     p.parent.mkdir(parents=True, exist_ok=True)
     seed = {
-        "title": "2026年2月アニメ情報の収集テンプレート",
-        "date": "2026-02-01",
-        "source": "https://animeanime.jp/article/2026/02/",
-        "summary": "このファイルに2026年2月の最新記事を追加してRAG対象にする。"
+        "title": "2027年2月アニメ情報の収集テンプレート",
+        "date": "2027-02-01",
+        "source": "https://animeanime.jp/article/2027/02/",
+        "summary": "このファイルに2027年2月の最新記事を追加してRAG対象にする。"
     }
     p.write_text(json.dumps(seed, ensure_ascii=False) + "\n", encoding="utf-8")
