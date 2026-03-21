@@ -43,8 +43,7 @@ def update_notebook(path: Path) -> bool:
     date_line = f'<div align="right"><sub>最終更新: {get_last_commit_date(path)}</sub></div>\n'
 
     new_source = [line for line in source if not DATE_LINE_RE.match(line)]
-    insert_at = 1 if new_source and new_source[0].startswith("#") else 0
-    new_source.insert(insert_at, date_line)
+    new_source.insert(0, date_line)
 
     if new_source == source:
         return False
