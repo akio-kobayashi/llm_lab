@@ -11,7 +11,7 @@ NOTEBOOK_DIR = REPO_ROOT / "notebooks"
 DATE_LINE_RE = re.compile(r'^<div align="right"><sub>.*?</sub></div>\n$')
 MARKDOWN_H1_RE = re.compile(r"^#\s+\*\*(.+?)\*\*\n$")
 PLAIN_H1_RE = re.compile(r"^#\s+(.+)\n$")
-HTML_H1_RE = re.compile(r"^<h1>.*</h1>\n$")
+HTML_H1_RE = re.compile(r"^<h1>(?:<strong>)?(.+?)(?:</strong>)?</h1>\n$")
 
 
 def get_last_commit_date(path: Path) -> str:
@@ -22,7 +22,7 @@ def get_last_commit_date(path: Path) -> str:
             str(REPO_ROOT),
             "log",
             "-1",
-            "--date=format:%Y-%m-%d",
+            "--date=format:%Y-%m-%d %H:%M",
             "--format=%ad",
             "--",
             str(path),
@@ -51,10 +51,13 @@ def update_notebook(path: Path) -> bool:
         first_line = new_source[0]
         md_bold = MARKDOWN_H1_RE.match(first_line)
         md_plain = PLAIN_H1_RE.match(first_line)
+        html_h1 = HTML_H1_RE.match(first_line)
         if md_bold:
-            new_source[0] = f"<h1>{md_bold.group(1)}</h1>\n"
+            new_source[0] = f"<h1><strong>{md_bold.group(1)}</strong></h1>\n"
+        elif html_h1:
+            new_source[0] = f"<h1><strong>{html_h1.group(1)}</strong></h1>\n"
         elif md_plain and not HTML_H1_RE.match(first_line):
-            new_source[0] = f"<h1>{md_plain.group(1)}</h1>\n"
+            new_source[0] = f"<h1><strong>{md_plain.group(1)}</strong></h1>\n"
 
     new_source.insert(0, date_line)
 
