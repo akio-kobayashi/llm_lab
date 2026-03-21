@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+
+python3 "$repo_root/scripts/update_notebook_dates.py"
+git add "$repo_root"/notebooks/*.ipynb
