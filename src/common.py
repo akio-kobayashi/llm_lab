@@ -6,6 +6,9 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 # 高性能かつモダンな Qwen2.5-3B-Instruct を採用します。
 MODEL_ID = "Qwen/Qwen2.5-3B-Instruct"
 EMB_MODEL_ID = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+DEFAULT_TEMPERATURE = 0.7
+DEFAULT_TOP_P = 0.9
+DEFAULT_TOP_K = 50
 DEFAULT_SYSTEM_PROMPT = (
     "あなたは親切で優秀な日本語AIアシスタントです。"
     "必ず「日本語のみ」で回答してください。英語や他の言語は使用しないでください。"
@@ -108,7 +111,15 @@ def _looks_meta_or_leaked_reasoning(text: str) -> bool:
     return any(fragment in s for fragment in bad_fragments)
 
 
-def _generate_once(model, tokenizer, messages, max_new_tokens, temperature):
+def _generate_once(
+    model,
+    tokenizer,
+    messages,
+    max_new_tokens,
+    temperature,
+    top_p=DEFAULT_TOP_P,
+    top_k=DEFAULT_TOP_K,
+):
     text = tokenizer.apply_chat_template(
         messages,
         tokenize=False,
@@ -116,7 +127,7 @@ def _generate_once(model, tokenizer, messages, max_new_tokens, temperature):
     )
     inputs = tokenizer([text], return_tensors="pt").to(model.device)
     
-    # do_sample が False の場合は sampling parameters (temperature, top_p) を渡さないように修正
+    # Greedy search では sampling parameters を渡さない
     gen_kwargs = {
         "max_new_tokens": max_new_tokens,
         "repetition_penalty": 1.05,
@@ -126,10 +137,11 @@ def _generate_once(model, tokenizer, messages, max_new_tokens, temperature):
     if temperature > 0:
         gen_kwargs["do_sample"] = True
         gen_kwargs["temperature"] = temperature
-        gen_kwargs["top_p"] = 0.9
+        gen_kwargs["top_p"] = top_p
+        gen_kwargs["top_k"] = top_k
     else:
         gen_kwargs["do_sample"] = False
-        # Greedy search の場合は temperature/top_p を含めないことで警告を回避
+        # sampling parameters を含めないことで警告を回避
 
     with torch.no_grad():
         generated_ids = model.generate(
@@ -181,7 +193,9 @@ def generate_text(
     tokenizer,
     prompt,
     max_new_tokens=256,
-    temperature=0.7,
+    temperature=DEFAULT_TEMPERATURE,
+    top_p=DEFAULT_TOP_P,
+    top_k=DEFAULT_TOP_K,
     system_prompt=DEFAULT_SYSTEM_PROMPT,
 ):
     """
@@ -191,7 +205,15 @@ def generate_text(
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": prompt}
     ]
-    answer = _generate_once(model, tokenizer, messages, max_new_tokens, temperature)
+    answer = _generate_once(
+        model,
+        tokenizer,
+        messages,
+        max_new_tokens,
+        temperature,
+        top_p=top_p,
+        top_k=top_k,
+    )
 
     # 既定設定で英語回答が出た場合のみ、日本語化を1回フォールバックする
     if system_prompt == DEFAULT_SYSTEM_PROMPT and _is_mostly_non_japanese(answer):
@@ -206,7 +228,15 @@ def generate_text(
             },
             {"role": "user", "content": answer},
         ]
-        answer = _generate_once(model, tokenizer, fallback_messages, max_new_tokens, 0.0)
+        answer = _generate_once(
+            model,
+            tokenizer,
+            fallback_messages,
+            max_new_tokens,
+            0.0,
+            top_p=top_p,
+            top_k=top_k,
+        )
 
     # 断片的な回答を避けるための最終リトライ
     if _looks_incomplete_answer(answer) or _looks_meta_or_leaked_reasoning(answer):
@@ -221,7 +251,15 @@ def generate_text(
             },
             {"role": "user", "content": prompt},
         ]
-        answer = _generate_once(model, tokenizer, retry_messages, max_new_tokens, 0.3)
+        answer = _generate_once(
+            model,
+            tokenizer,
+            retry_messages,
+            max_new_tokens,
+            0.3,
+            top_p=top_p,
+            top_k=top_k,
+        )
 
     # それでも不適切なら、事実回答として最低限の日本語を返す
     if _looks_meta_or_leaked_reasoning(answer):
