@@ -4,6 +4,8 @@
 
 ## 1. 言語モデル (LLM)
 - **Qwen2.5-3B-Instruct**: Alibaba Group が提供するモデル。使用にあたっては [Qwen License](https://github.com/QwenLM/Qwen) および利用規約を遵守してください。
+- 本教材は教育目的での利用を前提としています。
+- 商用利用を検討する場合は、Qwen の利用条件を利用者自身で確認してください。
 
 ## 2. 埋め込みモデル (Embedding)
 - **sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2**: Hugging Face Hub で公開されている多言語対応の埋め込みモデルです。
