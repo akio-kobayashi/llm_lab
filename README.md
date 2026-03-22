@@ -23,7 +23,7 @@
    [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/ai_agent/notebooks/04_rag_faiss_exercise.ipynb)
 6. `05_agent_basics.ipynb` - エージェント（自己修正ループ）の基礎  
    [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/ai_agent/notebooks/05_agent_basics.ipynb)
-7. `06_agent_gradio_ui.ipynb` - エージェント思考プロセスの可視化UI  
+7. `06_agent_gradio_ui.ipynb` - AIエージェントの処理過程の可視化  
    [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/ai_agent/notebooks/06_agent_gradio_ui.ipynb)
 8. `07_agent_rag_gradio.ipynb` - RAG統合マルチエージェント（最終課題）  
    [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/akio-kobayashi/llm_lab/blob/ai_agent/notebooks/07_agent_rag_gradio.ipynb)

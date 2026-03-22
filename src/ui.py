@@ -4,8 +4,8 @@ def create_agent_ui(run_agent_fn):
     """
     エージェントの思考プロセスを可視化するUI
     """
-    with gr.Blocks(title="AI Agent 可視化デモ") as demo:
-        gr.Markdown("# AIエージェント思考プロセス可視化")
+    with gr.Blocks(title="AIエージェントの処理過程の可視化") as demo:
+        gr.Markdown("# AIエージェントの処理過程の可視化")
         gr.Markdown("Executor (実行) と Critic (批評) による自己修正ループを確認できます。")
         
         with gr.Row():
