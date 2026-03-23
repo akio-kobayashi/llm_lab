@@ -1,0 +1,116 @@
+# `anime_docs_sample.jsonl` 参照用サンプル
+
+03 ノートブックで使う [`anime_docs_sample.jsonl`](/Users/akio/Documents/GitHub/llm_lab/data/docs/anime_docs_sample.jsonl) の内容を、学生が読みやすい形に整えた参照資料です。
+
+## データ形式
+
+各行は 1 件の JSON オブジェクトです。主な項目は次のとおりです。
+
+- `doc_id`: 文書ID
+- `title`: 作品名
+- `section`: 文書の種類や見出し
+- `text`: 本文
+- `source_url`: 参照元URL
+- `retrieved_at`: 取得日
+
+### 1 行の例
+
+```json
+{
+  "doc_id": "anime_a",
+  "title": "星空のレクイエム",
+  "section": "概要",
+  "text": "『星空のレクイエム』は、2027年に公開予定のSFファンタジーアニメ映画。監督は佐藤健一、制作はスタジオ・アステロイド。物語は、星の声を聴くことができる少女・ルナが、滅びゆく故郷の惑星を救うために伝説の聖域を目指す旅を描く。",
+  "source_url": "https://example.com/anime/a",
+  "retrieved_at": "2026-03-03"
+}
+```
+
+## 全レコード一覧
+
+### 1. `anime_a`
+
+- `title`: 星空のレクイエム
+- `section`: 概要
+- `text`: 『星空のレクイエム』は、2027年に公開予定のSFファンタジーアニメ映画。監督は佐藤健一、制作はスタジオ・アステロイド。物語は、星の声を聴くことができる少女・ルナが、滅びゆく故郷の惑星を救うために伝説の聖域を目指す旅を描く。
+- `source_url`: https://example.com/anime/a
+- `retrieved_at`: 2026-03-03
+
+### 2. `anime_a`
+
+- `title`: 星空のレクイエム
+- `section`: 登場人物
+- `text`: 主人公のルナ（CV: 花澤香織）は、惑星ステラの唯一の生存者。相棒のロボット・テツ（CV: 大塚明夫）と共に、宇宙船『ステラ・ウィング』で旅をしている。
+- `source_url`: https://example.com/anime/a
+- `retrieved_at`: 2026-03-03
+
+### 3. `anime_b`
+
+- `title`: サイバー・パンクス2027
+- `section`: 概要
+- `text`: 2027年2月に放送開始のテレビアニメシリーズ。近未来の東京を舞台に、非合法なサイバーウェアを駆使する傭兵たちの生き様を描くアクション群像劇。総作画監督は田中良平が担当。
+- `source_url`: https://example.com/anime/b
+- `retrieved_at`: 2026-03-03
+
+### 4. `anime_c`
+
+- `title`: 料理の魔法使い
+- `section`: 概要
+- `text`: 異世界転生した一流シェフが、魔法のスパイスを使って人々の悩みを解決するハートフルコメディ。2027年春クールに第2期の放送が決定している。
+- `source_url`: https://example.com/anime/c
+- `retrieved_at`: 2026-03-03
+
+### 5. `anime_d`
+
+- `title`: タイムリープ・カフェ
+- `section`: あらすじ
+- `text`: 下町の路地裏にある喫茶店『クロノス』では、特定のコーヒーを注文すると過去に10分間だけ戻ることができるという噂があった。店主のシロ（30歳）は、客たちの後悔に寄り添いながら、自分自身の過去とも向き合っていく。
+- `source_url`: https://example.com/anime/d
+- `retrieved_at`: 2026-03-03
+
+### 6. `anime_e`
+
+- `title`: メカ・レジェンドG
+- `section`: 制作
+- `text`: 往年の名作ロボットアニメのリブート版。最新の3DCG技術を駆使し、ダイナミックな戦闘シーンを再現。2027年秋に劇場公開予定。
+- `source_url`: https://example.com/anime/e
+- `retrieved_at`: 2026-03-03
+
+### 7. `anime_f`
+
+- `title`: 猫のいる駅舎
+- `section`: 概要
+- `text`: 地方の無人駅で駅長を務める三毛猫と、そこを訪れる人々との交流を描く短編アニメ。癒やし系アニメとしてSNSで話題となり、2027年1月にOVA化された。
+- `source_url`: https://example.com/anime/f
+- `retrieved_at`: 2026-03-03
+
+### 8. `anime_g`
+
+- `title`: デジタル・ドリーム
+- `section`: 概要
+- `text`: VRゲームの中に閉じ込められたプレイヤーたちが、現実世界への帰還を目指すデスゲーム系アニメ。2027年2月よりNetflixで世界独占配信開始。
+- `source_url`: https://example.com/anime/g
+- `retrieved_at`: 2026-03-03
+
+### 9. `anime_h`
+
+- `title`: 雨上がりのメロディ
+- `section`: あらすじ
+- `text`: 吹奏楽部を舞台にした青春ストーリー。挫折を経験した天才フルート奏者の少女が、仲間と共に再び音楽の楽しさを取り戻していく様子を丁寧に描く。2027年夏にTVアニメ化。
+- `source_url`: https://example.com/anime/h
+- `retrieved_at`: 2026-03-03
+
+### 10. `anime_i`
+
+- `title`: 怪盗ナイト
+- `section`: 登場人物
+- `text`: 主人公のナイト（本名：九条蓮）は、昼は普通の高校生、夜は世間を騒がせる義賊。ライバルの刑事・一ノ瀬とは幼馴染という設定。2027年冬アニメ。
+- `source_url`: https://example.com/anime/i
+- `retrieved_at`: 2026-03-03
+
+## 03 ノートブックで見るポイント
+
+- 同じ `title` でも `section` が異なる行がある
+- 検索では作品全体ではなく、1 行ずつが候補として返ることがある
+- 回答時には、どの行が根拠になったかを意識して読む
+- `text` の内容だけでなく、`title` と `section` も検索や根拠確認に役立つ
