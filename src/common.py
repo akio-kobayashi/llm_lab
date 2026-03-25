@@ -5,7 +5,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 # 2023年世代のモデルは最新の chat_template に対応していないため、
 # 高性能かつモダンな Qwen2.5-3B-Instruct を採用します。
 MODEL_ID = "Qwen/Qwen2.5-3B-Instruct"
-AGENT_MODEL_ID = "Qwen/Qwen3-8B-Instruct"  # 05〜07: エージェント用
+AGENT_MODEL_ID = "Qwen/Qwen3-8B"  # 05〜07: エージェント用（Qwen3系は -Instruct が付かない）
 EMB_MODEL_ID = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 DEFAULT_TEMPERATURE = 0.7
 DEFAULT_TOP_P = 0.9
