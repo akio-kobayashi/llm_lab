@@ -22,7 +22,7 @@ class LLMExecutorCriticAgent:
         self.chat_fn = chat_fn
         self.role_configs = role_configs or [
             RoleConfig(name="Executor", system_prompt="あなたは優秀なAIアシスタントです。論理的かつ簡潔に回答してください。"),
-            RoleConfig(name="Critic", system_prompt="あなたは厳しい批評家です。回答に誤りや論理の飛躍がないか指摘してください。")
+            RoleConfig(name="Critic", system_prompt="あなたは厳しい批評家です。回答に誤りや論理の飛躍がないか指摘してください。問題がなければ「誤りなし」とだけ答えてください。")
         ]
 
     def run_pipeline(self, query: str, max_iterations: int = 1) -> Tuple[str, str, List[AgentStep]]:
@@ -38,8 +38,6 @@ class LLMExecutorCriticAgent:
         for i in range(max_iterations):
             # 2a. Critic の批評
             critic_input = (
-                f"以下の回答をレビューし、修正が必要な点があれば指摘してください。"
-                f"問題がなければ「誤りなし」とだけ答えてください。\n\n"
                 f"【元の質問】\n{query}\n\n【回答】\n{current_answer}"
             )
             critique = self.chat_fn(critic.system_prompt, critic_input, critic.max_new_tokens, critic.temperature)
