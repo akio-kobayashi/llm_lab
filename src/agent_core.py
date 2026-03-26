@@ -38,6 +38,7 @@ class LLMExecutorCriticAgent:
         for i in range(max_iterations):
             # 2a. Critic の批評
             critic_input = (
+                f"以下の回答をレビューし、システムプロンプトの指示に従ってフィードバックを出力してください。\n\n"
                 f"【元の質問】\n{query}\n\n【回答】\n{current_answer}"
             )
             critique = self.chat_fn(critic.system_prompt, critic_input, critic.max_new_tokens, critic.temperature)
