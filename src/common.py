@@ -165,10 +165,10 @@ def _generate_once(
     decoded = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0].strip()
     return _strip_reasoning_trace(decoded)
 
-def load_llm(model_id=MODEL_ID, use_4bit=True):
+def load_llm(model_id=MODEL_ID, use_4bit=True, torch_dtype=None, device_map="auto"):
     """
-    Qwen 3.5 などのLLMをロードする共通関数。
-    Colab T4環境を想定し、デフォルトで4bit量子化(QLoRA対応)を使用。
+    Colab向けの共通モデル読込関数。
+    既定では4bit量子化を使う。非量子化の教材ではdtypeと配置先を指定できる。
     """
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
     
@@ -183,14 +183,14 @@ def load_llm(model_id=MODEL_ID, use_4bit=True):
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
             quantization_config=bnb_config,
-            device_map="auto",
+            device_map=device_map,
             trust_remote_code=True
         )
     else:
         model = AutoModelForCausalLM.from_pretrained(
             model_id,
-            torch_dtype=torch.bfloat16,
-            device_map="auto",
+            torch_dtype=torch_dtype if torch_dtype is not None else torch.bfloat16,
+            device_map=device_map,
             trust_remote_code=True
         )
     
