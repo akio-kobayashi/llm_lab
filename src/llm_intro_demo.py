@@ -49,6 +49,44 @@ class LectureDemo:
 
         display(HTML(content))
 
+    def show_tokens(self, prompt: str, as_chat: bool = False, max_rows: int = 60) -> dict:
+        """候補表示／質問応答と同じ入力処理で、トークンとIDを表示する。"""
+        prompt = prompt.strip()
+        if not prompt:
+            raise ValueError("分割を確認する文章を入力してください。")
+        max_rows = _positive_int(max_rows, "表示行数", 200)
+        formatted = self.tokenizer.apply_chat_template(
+            [{"role": "user", "content": prompt}],
+            tokenize=False,
+            add_generation_prompt=True,
+        ) if as_chat else prompt
+        token_ids = self.tokenizer(formatted)["input_ids"]
+        special_ids = set(self.tokenizer.all_special_ids)
+        rows = [
+            {"position": i + 1, "token": str(self.tokenizer.convert_ids_to_tokens(token_id)),
+             "id": int(token_id), "special": token_id in special_ids}
+            for i, token_id in enumerate(token_ids[:max_rows])
+        ]
+        body = "".join(
+            f"<tr><td>{row['position']}</td><td><code>{html.escape(row['token'])}</code></td>"
+            f"<td>{row['id']}</td></tr>"
+            for row in rows
+        )
+        mode = "質問応答用の書式を含む入力" if as_chat else "候補予測に渡す入力"
+        omitted = (f"<p>表示は先頭{max_rows}行です。入力を切り詰めてはいません。</p>"
+                   if len(token_ids) > max_rows else "")
+        self._display(
+            f"<h4>{mode}：{len(token_ids)}トークン</h4>"
+            f"<p>{html.escape(prompt)}</p>"
+            "<table style='border-spacing:18px 5px'><tr><th>位置</th><th>トークン表記</th>"
+            f"<th>ID</th></tr>{body}</table>{omitted}"
+            "<p>トークン表記は辞書内部の表記です。空白や文字の一部が特殊な記号で"
+            "表示される場合があります。IDは識別番号で、埋め込みベクトルではありません。</p>"
+            "<p>質問応答用の書式には、話者や回答の開始位置を示す特殊トークンも含まれます。"
+            "この表示では文章を生成せず、モデルのパラメータも更新しません。</p>"
+        )
+        return {"token_count": len(token_ids), "rows": rows, "as_chat": bool(as_chat)}
+
     def show_candidates(self, prompt: str, top_n: int = 8) -> list[dict]:
         """入力文そのものの続きに対する確率分布の上位候補を表示する。"""
         prompt = prompt.strip()

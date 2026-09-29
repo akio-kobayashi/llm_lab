@@ -67,6 +67,46 @@ class LectureDemoTest(unittest.TestCase):
             self.assertTrue(cell["source"][0].startswith("#@title"))
             self.assertIn("#@param", "".join(cell["source"]))
 
+    def test_tokens_use_actual_tokenizer_and_escape_internal_symbols(self):
+        demo = LectureDemo.__new__(LectureDemo)
+        demo.tokenizer = Mock()
+        demo.tokenizer.return_value = {"input_ids": [10, 20, 30]}
+        demo.tokenizer.all_special_ids = [10]
+        demo.tokenizer.convert_ids_to_tokens.side_effect = ["<start>", "猫"]
+        demo._display = Mock()
+        result = demo.show_tokens(" 猫が座る ", max_rows=2)
+        demo.tokenizer.assert_called_once_with("猫が座る")
+        self.assertEqual(result["token_count"], 3)
+        self.assertEqual(len(result["rows"]), 2)
+        self.assertTrue(result["rows"][0]["special"])
+        self.assertEqual(result["rows"][1]["id"], 20)
+        content = demo._display.call_args.args[0]
+        self.assertIn("&lt;start&gt;", content)
+        self.assertIn("入力を切り詰めてはいません", content)
+        demo.tokenizer.apply_chat_template.assert_not_called()
+
+    def test_tokens_chat_format_matches_generation_format(self):
+        demo = LectureDemo.__new__(LectureDemo)
+        demo.tokenizer = Mock()
+        demo.tokenizer.apply_chat_template.return_value = "<user>質問<assistant>"
+        demo.tokenizer.return_value = {"input_ids": [8]}
+        demo.tokenizer.all_special_ids = []
+        demo.tokenizer.convert_ids_to_tokens.return_value = "質問"
+        demo._display = Mock()
+        result = demo.show_tokens("質問", as_chat=True)
+        demo.tokenizer.apply_chat_template.assert_called_once_with(
+            [{"role": "user", "content": "質問"}], tokenize=False, add_generation_prompt=True
+        )
+        demo.tokenizer.assert_called_once_with("<user>質問<assistant>")
+        self.assertTrue(result["as_chat"])
+
+    def test_tokens_reject_empty_text_and_invalid_row_limit(self):
+        demo = LectureDemo.__new__(LectureDemo)
+        with self.assertRaises(ValueError):
+            demo.show_tokens("  ")
+        with self.assertRaises(ValueError):
+            demo.show_tokens("猫", max_rows=0)
+
 
 if __name__ == "__main__":
     unittest.main()
