@@ -41,6 +41,7 @@ class LectureDemo:
         self.pad_id = self.tokenizer.pad_token_id
         if self.pad_id is None:
             self.pad_id = self.tokenizer.eos_token_id
+        self.token_history: list[dict] = []
         self.candidate_history: list[dict] = []
         self.generation_history: list[dict] = []
 
@@ -67,25 +68,42 @@ class LectureDemo:
              "id": int(token_id), "special": token_id in special_ids}
             for i, token_id in enumerate(token_ids[:max_rows])
         ]
-        body = "".join(
-            f"<tr><td>{row['position']}</td><td><code>{html.escape(row['token'])}</code></td>"
-            f"<td>{row['id']}</td></tr>"
-            for row in rows
+        self.token_history.append(
+            {
+                "prompt": prompt,
+                "token_count": len(token_ids),
+                "rows": rows,
+                "as_chat": bool(as_chat),
+                "max_rows": max_rows,
+            }
         )
-        mode = "質問応答用の書式を含む入力" if as_chat else "候補予測に渡す入力"
-        omitted = (f"<p>表示は先頭{max_rows}行です。入力を切り詰めてはいません。</p>"
-                   if len(token_ids) > max_rows else "")
-        self._display(
-            f"<h4>{mode}：{len(token_ids)}トークン</h4>"
-            f"<p>{html.escape(prompt)}</p>"
-            "<table style='border-spacing:18px 5px'><tr><th>位置</th><th>トークン表記</th>"
-            f"<th>ID</th></tr>{body}</table>{omitted}"
+        self._display(self._token_html())
+        return {"token_count": len(token_ids), "rows": rows, "as_chat": bool(as_chat)}
+
+    def _token_html(self) -> str:
+        sections = []
+        for entry in self.token_history:
+            body = "".join(
+                f"<tr><td>{row['position']}</td><td><code>{html.escape(row['token'])}</code></td>"
+                f"<td>{row['id']}</td></tr>"
+                for row in entry["rows"]
+            )
+            mode = "質問応答用の書式を含む入力" if entry["as_chat"] else "候補予測に渡す入力"
+            omitted = (f"<p>表示は先頭{entry['max_rows']}行です。入力を切り詰めてはいません。</p>"
+                       if entry["token_count"] > entry["max_rows"] else "")
+            sections.append(
+                f"<h4>{mode}：{entry['token_count']}トークン</h4>"
+                f"<p>{html.escape(entry['prompt'])}</p>"
+                "<table style='border-spacing:18px 5px'><tr><th>位置</th><th>トークン表記</th>"
+                f"<th>ID</th></tr>{body}</table>{omitted}"
+            )
+        sections.append(
             "<p>トークン表記は辞書内部の表記です。空白や文字の一部が特殊な記号で"
             "表示される場合があります。IDは識別番号で、埋め込みベクトルではありません。</p>"
             "<p>質問応答用の書式には、話者や回答の開始位置を示す特殊トークンも含まれます。"
             "この表示では文章を生成せず、モデルのパラメータも更新しません。</p>"
         )
-        return {"token_count": len(token_ids), "rows": rows, "as_chat": bool(as_chat)}
+        return "\n".join(sections)
 
     def show_candidates(self, prompt: str, top_n: int = 8) -> list[dict]:
         """入力文そのものの続きに対する確率分布の上位候補を表示する。"""
