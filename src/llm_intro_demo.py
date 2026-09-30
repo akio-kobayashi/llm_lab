@@ -116,14 +116,14 @@ class LectureDemo:
                 "<tr><td style='padding:5px 15px'>"
                 + html.escape(repr(item["token"]))
                 + "</td><td style='padding:5px 15px;text-align:right'>"
-                + f"{item['probability'] * 100:.2f}%</td></tr>"
+                + f"{item['probability']:.4f}</td></tr>"
                 for item in entry["candidates"]
             )
             sections.append(
                 f"<h4>入力：{html.escape(entry['prompt'])}</h4>"
                 "<table><tr><th>次のトークン候補</th><th>確率</th></tr>"
                 f"{rows}</table>"
-                "<p>上位候補だけを表示しています。表示値の合計は100%とは限りません。</p>"
+                "<p>上位候補だけを表示しています。表示値の合計は1とは限りません。</p>"
             )
         return "\n".join(sections)
 
